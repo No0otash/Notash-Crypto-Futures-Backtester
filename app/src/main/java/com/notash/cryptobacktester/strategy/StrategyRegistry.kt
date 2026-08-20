@@ -9,7 +9,7 @@ class StrategyRegistry {
         strategies[strategy.id] = strategy
     }
 
-    fun remove(id: String) {
+    fun unregister(id: String) {
         strategies.remove(id)
     }
 
@@ -21,7 +21,19 @@ class StrategyRegistry {
         return strategies.values.toList()
     }
 
+    fun ids(): List<String> {
+        return strategies.keys.toList()
+    }
+
+    fun contains(id: String): Boolean {
+        return strategies.containsKey(id)
+    }
+
     fun clear() {
         strategies.clear()
+    }
+
+    fun count(): Int {
+        return strategies.size
     }
 }
