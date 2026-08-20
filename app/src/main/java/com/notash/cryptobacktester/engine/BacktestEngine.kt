@@ -7,7 +7,6 @@ import com.notash.cryptobacktester.core.FundingRate
 import com.notash.cryptobacktester.core.OrderType
 import com.notash.cryptobacktester.core.Position
 import com.notash.cryptobacktester.core.Side
-import com.notash.cryptobacktester.core.Strategy
 import com.notash.cryptobacktester.core.TradeResult
 import kotlin.math.abs
 import kotlin.math.max
