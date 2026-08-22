@@ -37,6 +37,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.notash.cryptobacktester.ai.TradeAiAnalyzer
 import com.notash.cryptobacktester.core.BacktestReport
 import com.notash.cryptobacktester.export.BacktestExporter
 
@@ -59,6 +60,11 @@ class MainActivity : ComponentActivity() {
     private fun TradingDashboard(vm: BacktestViewModel = viewModel()) {
         val state by vm.state.collectAsState()
         val report = state.report
+        var showAiAnalysis by remember(report) { mutableStateOf(false) }
+        val aiAnalysis = remember(report, showAiAnalysis) {
+            if (showAiAnalysis) report?.let(TradeAiAnalyzer::analyze) else null
+        }
+
         Column(
             modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
                 .verticalScroll(rememberScrollState()).padding(14.dp),
@@ -105,11 +111,38 @@ class MainActivity : ComponentActivity() {
                     OutlinedButton(onClick = { shareReport(r, true) }, modifier = Modifier.weight(1f)) { Text("EXPORT JSON") }
                     OutlinedButton(onClick = { shareReport(r, false) }, modifier = Modifier.weight(1f)) { Text("EXPORT CSV") }
                 }
-                Button(onClick = { shareReport(r, true) }, modifier = Modifier.fillMaxWidth()) {
-                    Text("ANALYZE WITH AI  →  SHARE JSON")
+                Button(onClick = { showAiAnalysis = !showAiAnalysis }, modifier = Modifier.fillMaxWidth()) {
+                    Text(if (showAiAnalysis) "HIDE AI DIAGNOSIS" else "ANALYZE STRATEGY WITH AI")
                 }
+                aiAnalysis?.let { AiAnalysisCard(it) }
             }
             state.error?.let { Text("ERROR: $it") }
+        }
+    }
+
+    @Composable
+    private fun AiAnalysisCard(analysis: TradeAiAnalyzer.Analysis) {
+        Card(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("AI STRATEGY DIAGNOSIS", style = MaterialTheme.typography.titleMedium)
+                Text(analysis.strategy.summary, style = MaterialTheme.typography.bodyMedium)
+                Text("STRENGTHS", style = MaterialTheme.typography.labelLarge)
+                analysis.strategy.strengths.forEach { Text("• $it", style = MaterialTheme.typography.bodySmall) }
+                Text("WEAKNESSES", style = MaterialTheme.typography.labelLarge)
+                analysis.strategy.weaknesses.forEach { Text("• $it", style = MaterialTheme.typography.bodySmall) }
+                Text("RECOMMENDATIONS", style = MaterialTheme.typography.labelLarge)
+                analysis.strategy.recommendations.forEach { Text("• $it", style = MaterialTheme.typography.bodySmall) }
+                Text("TRADE DIAGNOSIS", style = MaterialTheme.typography.labelLarge)
+                analysis.trades.takeLast(6).reversed().forEach { diagnosis ->
+                    Card(Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text("#${diagnosis.index} ${diagnosis.outcome} • ${diagnosis.severity}")
+                            Text(diagnosis.primaryCause, style = MaterialTheme.typography.bodySmall)
+                            Text(diagnosis.recommendation, style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                }
+            }
         }
     }
 
