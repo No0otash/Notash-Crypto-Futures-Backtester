@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -118,27 +117,33 @@ class MainActivity : ComponentActivity() {
     private fun MetricGrid(r: BacktestReport) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                MetricCard("NET PNL", r.netPnl, Modifier.weight(1f))
-                MetricCard("ROI", r.roiPercent, "%", Modifier.weight(1f))
+                MetricCard("NET PNL", r.netPnl, modifier = Modifier.weight(1f))
+                MetricCard("ROI", r.roiPercent, "%", modifier = Modifier.weight(1f))
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                MetricCard("WIN RATE", r.winRatePercent, "%", Modifier.weight(1f))
-                MetricCard("DRAWDOWN", r.maxDrawdownPercent, "%", Modifier.weight(1f))
+                MetricCard("WIN RATE", r.winRatePercent, "%", modifier = Modifier.weight(1f))
+                MetricCard("DRAWDOWN", r.maxDrawdownPercent, "%", modifier = Modifier.weight(1f))
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                MetricCard("PROFIT FACTOR", r.profitFactor, "", Modifier.weight(1f))
-                MetricCard("FUNDING", r.totalFunding, "", Modifier.weight(1f))
+                MetricCard("PROFIT FACTOR", r.profitFactor, modifier = Modifier.weight(1f))
+                MetricCard("FUNDING", r.totalFunding, modifier = Modifier.weight(1f))
             }
         }
     }
 
     @Composable
     private fun MetricCard(title: String, value: Double, suffix: String = "", modifier: Modifier) {
-        Card(modifier) { Column(Modifier.padding(12.dp)) { Text(title, style = MaterialTheme.typography.labelSmall); Text(String.format("%.2f%s", value, suffix), style = MaterialTheme.typography.titleLarge) } }
+        Card(modifier) {
+            Column(Modifier.padding(12.dp)) {
+                Text(title, style = MaterialTheme.typography.labelSmall)
+                Text(String.format("%.2f%s", value, suffix), style = MaterialTheme.typography.titleLarge)
+            }
+        }
     }
 
     @Composable
     private fun EquityChart(values: List<Double>) {
+        val lineColor = MaterialTheme.colorScheme.primary
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(12.dp)) {
                 Text("EQUITY CURVE", style = MaterialTheme.typography.titleMedium)
@@ -150,11 +155,11 @@ class MainActivity : ComponentActivity() {
                         val range = (max - min).takeIf { it > 0 } ?: 1.0
                         val path = Path()
                         values.forEachIndexed { i, value ->
-                            val x = size.width * i / (values.lastIndex.toFloat())
+                            val x = size.width * i / values.lastIndex.toFloat()
                             val y = size.height - ((value - min) / range * size.height).toFloat()
                             if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
                         }
-                        drawPath(path, MaterialTheme.colorScheme.primary, style = Stroke(width = 4f))
+                        drawPath(path, lineColor, style = Stroke(width = 4f))
                     }
                 } else Text("Run a backtest to generate the equity curve")
             }
