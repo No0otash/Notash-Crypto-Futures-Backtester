@@ -2,8 +2,8 @@ package com.notash.cryptobacktester.engine
 
 import com.notash.cryptobacktester.core.BacktestConfig
 import com.notash.cryptobacktester.core.BacktestReport
-import com.notash.cryptobacktester.data.HistoricalDataManager
 import com.notash.cryptobacktester.data.CoinExRepository
+import com.notash.cryptobacktester.data.HistoricalDataManager
 import com.notash.cryptobacktester.strategy.StrategyFactory
 
 class CoinExBacktestRunner(
@@ -20,7 +20,6 @@ class CoinExBacktestRunner(
         strategyId: String,
         config: BacktestConfig
     ): BacktestReport {
-
         val strategy = StrategyFactory.create(strategyId)
             ?: throw IllegalArgumentException("Unknown strategy: $strategyId")
 
@@ -35,11 +34,8 @@ class CoinExBacktestRunner(
             throw IllegalStateException("CoinEx returned no candle data.")
         }
 
-        // Funding is fetched separately because the CoinEx funding endpoint
-        // currently exposes the latest funding information. Keep it optional
-        // so a temporary funding API failure does not prevent candle backtests.
         val funding = if (config.useFunding) {
-            repository.loadFundingRate(market)?.let { listOf(it) } ?: emptyList()
+            repository.loadFundingRate(market)?.let(::listOf) ?: emptyList()
         } else {
             emptyList()
         }
