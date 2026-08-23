@@ -1,5 +1,6 @@
 package com.notash.cryptobacktester.ui
 
+import android.content.Context
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -50,6 +51,7 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.LayoutDirection
@@ -86,7 +88,7 @@ fun ProfessionalTerminal() {
     var market by remember { mutableStateOf(state.market) }; var tf by remember { mutableStateOf(state.timeframe) }
     CompositionLocalProvider(LocalLayoutDirection provides if (languageFa) LayoutDirection.Rtl else LayoutDirection.Ltr) {
         MaterialTheme(colorScheme = androidx.compose.material3.darkColorScheme(primary = H.purple, secondary = H.cyan, background = H.bg, surface = H.panel)) {
-            Scaffold(containerColor = H.bg, topBar = { TopMenu(page, languageFa) { id -> page = id } }) { pad ->
+            Scaffold(containerColor = H.bg, topBar = { TopMenu(page, languageFa, { id -> page = id }, { languageFa = it }) }) { pad ->
                 Column(Modifier.fillMaxSize().padding(pad)) {
                     AnimatedContent(targetState = page, label = "page") { selected ->
                         when (selected) {
@@ -105,18 +107,18 @@ fun ProfessionalTerminal() {
     }
 }
 
-@Composable private fun TopMenu(selected: Int, fa: Boolean, go: (Int) -> Unit) {
+@Composable private fun TopMenu(selected: Int, fa: Boolean, go: (Int) -> Unit, setLanguageFa: (Boolean) -> Unit) {
     var menu by remember { mutableStateOf(false) }; var lang by remember { mutableStateOf(false) }
     Surface(color = H.panel) {
         Column {
-            Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("☰", color = H.cyan, fontSize = 22.sp, modifier = Modifier.padding(4.dp).pointerInput(Unit) { })
+            Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("☰", color = H.cyan, fontSize = 22.sp, modifier = Modifier.padding(4.dp))
                 Spacer(Modifier.size(8.dp)); Column(Modifier.weight(1f)) { Text("HANNAH", color = H.text, fontSize = 20.sp, fontWeight = FontWeight.Black); Text("FUTURES INTELLIGENCE", color = H.cyan, fontSize = 8.sp, fontWeight = FontWeight.Bold) }
                 TextButton(onClick = { lang = true }) { Text(if (fa) "EN" else "FA", color = H.cyan, fontWeight = FontWeight.Bold) }
                 TextButton(onClick = { menu = true }) { Text(if (fa) "منو" else "MENU", color = H.text, fontWeight = FontWeight.Bold) }
                 DropdownMenu(expanded = lang, onDismissRequest = { lang = false }) {
-                    DropdownMenuItem(text = { Text("English") }, onClick = { lang = false })
-                    DropdownMenuItem(text = { Text("فارسی") }, onClick = { lang = false })
+                    DropdownMenuItem(text = { Text("English") }, onClick = { setLanguageFa(false); lang = false })
+                    DropdownMenuItem(text = { Text("فارسی") }, onClick = { setLanguageFa(true); lang = false })
                 }
                 DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                     pages.forEach { p -> DropdownMenuItem(text = { Text(if (fa) p.fa else p.en) }, onClick = { go(p.id); menu = false }) }
@@ -196,20 +198,29 @@ private fun nearestIndex(c: List<Candle>, time: Long): Int { if (c.isEmpty()) re
 }
 
 @Composable private fun AnalysisPage(r: BacktestReport?, fa: Boolean) {
+    val context = LocalContext.current
     val analysis = r?.let { TradeAiAnalyzer.analyze(it) }
     LazyColumn(Modifier.fillMaxSize().padding(horizontal = 14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        item { HeaderText(if (fa) "تحلیل استراتژی" else "AI STRATEGY ANALYSIS", "Offline-first diagnosis", if (fa) "همان موتور تحلیل نسخه‌های قبلی" else "Restored from the previous analysis engine") }
+        item { HeaderText(if (fa) "تحلیل هوشمند استراتژی" else "AI STRATEGY ANALYSIS", "Bot Diagnosis", if (fa) "تشخیص علت معاملات و پیشنهاد اصلاح ربات" else "Trade causes, bot weaknesses and improvement plan") }
         if (analysis == null) item { CardBox { Text(if (fa) "ابتدا یک بک‌تست اجرا کنید تا تحلیل تولید شود." else "Run a backtest first to generate analysis.", color = H.muted, fontSize = 12.sp) } }
         analysis?.let { a ->
-            item { CardBox { Title(if (fa) "خلاصه" else "SUMMARY"); Text(a.strategy.summary, color = H.text, fontSize = 13.sp, fontWeight = FontWeight.SemiBold) } }
+            item { CardBox { Title(if (fa) "امتیاز سلامت ربات" else "BOT HEALTH SCORE"); Text("${a.strategy.healthScore}/100", color = if (a.strategy.healthScore >= 70) H.green else H.amber, fontSize = 30.sp, fontWeight = FontWeight.Black); Spacer(Modifier.height(6.dp)); Text(a.strategy.summary, color = H.text, fontSize = 13.sp, fontWeight = FontWeight.SemiBold) } }
+            item { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) { Button(onClick = { r?.let { TradeAnalysisExporterBridge.shareCsv(context, it, a) } }, modifier = Modifier.weight(1f)) { Text(if (fa) "خروجی CSV" else "EXPORT CSV") }; Button(onClick = { r?.let { TradeAnalysisExporterBridge.shareJson(context, it, a) } }, modifier = Modifier.weight(1f)) { Text(if (fa) "خروجی JSON" else "EXPORT JSON") } } }
             item { AnalysisList(if (fa) "نقاط قوت" else "STRENGTHS", a.strategy.strengths, H.green) }
-            item { AnalysisList(if (fa) "نقاط ضعف" else "WEAKNESSES", a.strategy.weaknesses, H.red) }
-            item { AnalysisList(if (fa) "پیشنهادها" else "RECOMMENDATIONS", a.strategy.recommendations, H.cyan) }
+            item { AnalysisList(if (fa) "مشکلات ربات" else "BOT WEAKNESSES", a.strategy.weaknesses, H.red) }
+            item { AnalysisList(if (fa) "پیشنهادهای قابل تست" else "TESTABLE IMPROVEMENTS", a.strategy.recommendations, H.cyan) }
+            item { CardBox { Title(if (fa) "تحلیل تک‌تک معاملات" else "TRADE-BY-TRADE DIAGNOSIS"); a.trades.forEach { d ->
+                val color = if (d.outcome == "سود") H.green else H.red
+                Text("#${d.index} • ${d.outcome} • ${d.severity}", color = color, fontWeight = FontWeight.Bold, fontSize = 11.sp, modifier = Modifier.padding(top = 9.dp))
+                Text(if (fa) "علت: ${d.primaryCause}" else "Cause: ${d.primaryCause}", color = H.text, fontSize = 10.sp, modifier = Modifier.padding(top = 3.dp))
+                d.evidence.forEach { e -> Text("• $e", color = H.muted, fontSize = 9.sp) }
+                Text(if (fa) "بهبود: ${d.recommendation}" else "Improve: ${d.recommendation}", color = H.cyan, fontSize = 10.sp, modifier = Modifier.padding(top = 3.dp))
+            } } }
         }
     }
 }
 
-@Composable private fun AnalysisList(title: String, items: List<String>, color: Color) { CardBox { Title(title); items.forEach { Text("• $it", color = color, fontSize = 11.sp, modifier = Modifier.padding(top = 6.dp)) } } }
+@Composable private fun AnalysisList(title: String, items: List<String>, color: Color) { CardBox { Title(title); if (items.isEmpty()) Text("—", color = H.muted); items.forEach { Text("• $it", color = color, fontSize = 11.sp, modifier = Modifier.padding(top = 6.dp)) } } }
 
 @Composable private fun TradesPage(r: BacktestReport?, fa: Boolean) { val trades = r?.trades.orEmpty().reversed(); LazyColumn(Modifier.fillMaxSize().padding(horizontal = 14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) { item { HeaderText(if (fa) "معاملات" else "TRADE TAPE", "${trades.size}", if (fa) "تمام پوزیشن‌های اجراشده" else "All executed positions") }; if (trades.isEmpty()) item { CardBox { Text(if (fa) "هنوز معامله‌ای وجود ندارد." else "No trades yet. Run a backtest first.", color = H.muted) } }; items(trades) { t -> CardBox { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text(if (t.side == Side.LONG) "LONG" else "SHORT", color = if (t.side == Side.LONG) H.green else H.red, fontWeight = FontWeight.Black); Text(money(t.netPnl), color = if (t.netPnl >= 0) H.green else H.red, fontWeight = FontWeight.Bold) }; Text("${price(t.entryPrice)} → ${price(t.exitPrice)}", color = H.text, fontSize = 13.sp); Text("Qty ${price(t.quantity)} • Fee ${money(t.fees)} • Funding ${money(t.funding)}", color = H.muted, fontSize = 10.sp) } } } }
 
@@ -235,3 +246,8 @@ private fun nearestIndex(c: List<Candle>, time: Long): Int { if (c.isEmpty()) re
 @Composable private fun Empty(text: String, height: Int = 180) { Box(Modifier.fillMaxWidth().height(height.dp).clip(RoundedCornerShape(12.dp)).background(H.panel2), contentAlignment = Alignment.Center) { Text(text, color = H.muted, fontSize = 10.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(20.dp)) } }
 private fun money(v: Double) = if (v.isFinite()) "%,.2f".format(v) else "∞"
 private fun price(v: Double) = if (v.isFinite()) "%,.4f".format(v) else "∞"
+
+private object TradeAnalysisExporterBridge {
+    fun shareCsv(context: Context, report: BacktestReport, analysis: TradeAiAnalyzer.Analysis) = com.notash.cryptobacktester.ui.AnalysisExport.shareCsv(context, report, analysis)
+    fun shareJson(context: Context, report: BacktestReport, analysis: TradeAiAnalyzer.Analysis) = com.notash.cryptobacktester.ui.AnalysisExport.shareJson(context, report, analysis)
+}
