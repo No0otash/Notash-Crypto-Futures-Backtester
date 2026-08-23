@@ -3,10 +3,10 @@ name: Build Android APK
 on:
   workflow_dispatch:
   push:
-    branches: [ main ]
+    branches: [ main, 'redesign/**' ]
 
 jobs:
-  build:
+  test-and-build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -18,10 +18,14 @@ jobs:
           java-version: '17'
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
+      - name: Unit tests
+        run: gradle testDebugUnitTest
       - name: Build Debug APK
         run: gradle assembleDebug
+      - name: Inspect APK size
+        run: ls -lh app/build/outputs/apk/debug/app-debug.apk
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Notash-Crypto-Futures-Backtester
+          name: Notash-Crypto-Futures-Backtester-v2
           path: app/build/outputs/apk/debug/app-debug.apk
