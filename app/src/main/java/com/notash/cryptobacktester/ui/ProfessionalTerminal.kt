@@ -1,7 +1,6 @@
 package com.notash.cryptobacktester.ui
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -16,7 +15,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -26,23 +24,20 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Divider
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -163,23 +158,13 @@ private fun BacktestScreen(state: BacktestUiState, vm: BacktestViewModel, market
             }
         }
         item {
-            Button(
-                onClick = { vm.setMarket(market); vm.runBacktest() },
-                enabled = !state.isRunning,
-                modifier = Modifier.fillMaxWidth().height(56.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Accent)
-            ) {
+            Button(onClick = { vm.setMarket(market); vm.runBacktest() }, enabled = !state.isRunning, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp), colors = ButtonDefaults.buttonColors(containerColor = Accent)) {
                 if (state.isRunning) CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp, color = Color.White)
                 else Text("RUN BACKTEST", fontWeight = FontWeight.Bold)
             }
         }
-        state.error?.let { error ->
-            item { PanelCard { Text("ENGINE ERROR", color = Red, fontWeight = FontWeight.Bold); Text(error, color = Color.White, fontSize = 13.sp) } }
-        }
-        state.report?.let { r ->
-            item { ResultSummary(r) }
-        }
+        state.error?.let { error -> item { PanelCard { Text("ENGINE ERROR", color = Red, fontWeight = FontWeight.Bold); Text(error, color = Color.White, fontSize = 13.sp) } } }
+        state.report?.let { r -> item { ResultSummary(r) } }
     }
 }
 
@@ -187,10 +172,7 @@ private fun BacktestScreen(state: BacktestUiState, vm: BacktestViewModel, market
 private fun TradesScreen(report: BacktestReport?) {
     val trades = report?.trades.orEmpty()
     LazyColumn(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        item {
-            Text("TRADE TAPE", color = Cyan, fontSize = 12.sp, fontWeight = FontWeight.Black)
-            Text("Executed positions", color = Color.White, fontSize = 25.sp, fontWeight = FontWeight.Bold)
-        }
+        item { Text("TRADE TAPE", color = Cyan, fontSize = 12.sp, fontWeight = FontWeight.Black); Text("Executed positions", color = Color.White, fontSize = 25.sp, fontWeight = FontWeight.Bold) }
         if (trades.isEmpty()) item { PanelCard { Text("No trades yet. Run a backtest first.", color = Muted) } }
         items(trades.reversed()) { trade ->
             PanelCard {
@@ -230,7 +212,7 @@ private fun MetricGrid(report: BacktestReport?) {
 
 @Composable
 private fun MetricCard(title: String, value: String, modifier: Modifier, valueColor: Color = Color.White) {
-    Card(modifier, colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(16.dp)) {
+    Card(modifier = modifier, colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(16.dp)) {
         Column(Modifier.padding(14.dp)) { Text(title, color = Muted, fontSize = 10.sp, fontWeight = FontWeight.Bold); Spacer(Modifier.height(4.dp)); Text(value, color = valueColor, fontSize = 20.sp, fontWeight = FontWeight.Bold) }
     }
 }
@@ -258,15 +240,13 @@ private fun StatusPill(state: BacktestUiState) {
 private fun BottomBar(page: Int, select: (Int) -> Unit) {
     Surface(color = Panel) {
         Row(Modifier.fillMaxWidth().padding(8.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
-            listOf("HOME", "BACKTEST", "TRADES", "SETTINGS").forEachIndexed { index, label ->
-                TextButton(onClick = { select(index) }) { Text(label, color = if (page == index) Cyan else Muted, fontSize = 10.sp, fontWeight = FontWeight.Bold) }
-            }
+            listOf("HOME", "BACKTEST", "TRADES", "SETTINGS").forEachIndexed { index, label -> TextButton(onClick = { select(index) }) { Text(label, color = if (page == index) Cyan else Muted, fontSize = 10.sp, fontWeight = FontWeight.Bold) } }
         }
     }
 }
 
 @Composable
-private fun PanelCard(content: @Composable ColumnScope.() -> Unit) {
+private fun PanelCard(content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
     Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(18.dp)) { Column(Modifier.padding(15.dp), content = content) }
 }
 
