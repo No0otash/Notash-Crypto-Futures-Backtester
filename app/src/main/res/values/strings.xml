@@ -61,8 +61,8 @@
     <string name="slippage">لغزش قیمت</string>
     <string name="trading_fee">کارمزد معامله</string>
     <string name="funding_fee">کارمزد فاندینگ</string>
-    <string name="long">لانگ</string>
-    <string name="short">شورت</string>
+    <string name="position_long">لانگ</string>
+    <string name="position_short">شورت</string>
     <string name="start_backtest">شروع بک‌تست</string>
     <string name="run_backtest">اجرای بک‌تست</string>
     <string name="stop_backtest">توقف بک‌تست</string>
