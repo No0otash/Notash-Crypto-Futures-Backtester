@@ -37,6 +37,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.notash.cryptobacktester.ai.AiReportFormatter
 import com.notash.cryptobacktester.ai.TradeAiAnalyzer
 import com.notash.cryptobacktester.core.BacktestReport
 import com.notash.cryptobacktester.export.BacktestExporter
@@ -54,6 +55,14 @@ class MainActivity : ComponentActivity() {
             putExtra(Intent.EXTRA_SUBJECT, "Notash Backtest ${if (json) "JSON" else "CSV"}")
             putExtra(Intent.EXTRA_TEXT, body)
         }, "Share backtest ${if (json) "JSON" else "CSV"}"))
+    }
+
+    private fun shareAiAnalysis(analysis: TradeAiAnalyzer.Analysis) {
+        startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_SUBJECT, "Notash AI Strategy Diagnosis")
+            putExtra(Intent.EXTRA_TEXT, AiReportFormatter.toText(analysis))
+        }, "Share AI diagnosis"))
     }
 
     @Composable
@@ -114,7 +123,12 @@ class MainActivity : ComponentActivity() {
                 Button(onClick = { showAiAnalysis = !showAiAnalysis }, modifier = Modifier.fillMaxWidth()) {
                     Text(if (showAiAnalysis) "HIDE AI DIAGNOSIS" else "ANALYZE STRATEGY WITH AI")
                 }
-                aiAnalysis?.let { AiAnalysisCard(it) }
+                aiAnalysis?.let { analysis ->
+                    AiAnalysisCard(analysis)
+                    OutlinedButton(onClick = { shareAiAnalysis(analysis) }, modifier = Modifier.fillMaxWidth()) {
+                        Text("SHARE AI DIAGNOSIS")
+                    }
+                }
             }
             state.error?.let { Text("ERROR: $it") }
         }
