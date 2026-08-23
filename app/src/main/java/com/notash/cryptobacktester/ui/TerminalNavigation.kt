@@ -9,6 +9,8 @@ enum class TerminalPage(val titleFa: String, val titleEn: String) {
     MARKET("بازار", "Market"),
     FUTURES("فیوچرز", "Futures"),
     BACKTEST("بک‌تست", "Backtest"),
+    LIVE_BACKTEST("بک‌تست زنده", "Live Backtest"),
+    STRATEGY("استراتژی", "Strategy Lab"),
     AI("تحلیل هوشمند", "AI Analyst"),
     TRADES("معاملات", "Trades"),
     SETTINGS("تنظیمات", "Settings")
@@ -18,12 +20,7 @@ enum class TerminalPage(val titleFa: String, val titleEn: String) {
 fun TerminalNavigation(selected: TerminalPage, onSelected: (TerminalPage) -> Unit, persian: Boolean = true) {
     NavigationBar {
         TerminalPage.values().forEach { page ->
-            NavigationBarItem(
-                selected = selected == page,
-                onClick = { onSelected(page) },
-                icon = { Text(page.name.take(1)) },
-                label = { Text(if (persian) page.titleFa else page.titleEn) }
-            )
+            NavigationBarItem(selected == page, { onSelected(page) }, icon = { Text(page.name.take(1)) }, label = { Text(if (persian) page.titleFa else page.titleEn) })
         }
     }
 }
