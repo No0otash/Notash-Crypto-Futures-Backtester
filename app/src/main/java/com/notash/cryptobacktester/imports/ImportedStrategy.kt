@@ -5,16 +5,15 @@ import com.notash.cryptobacktester.data.StrategyPackage
 import com.notash.cryptobacktester.strategy.AdvancedPullbackStrategy
 import com.notash.cryptobacktester.strategy.Strategy
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.doubleOrNull
+import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import java.util.Locale
 
 /** Imported strategies are configuration packages only; arbitrary source code is never executed. */
-data class ImportedStrategy(
-    val packageData: StrategyPackage,
-    val config: BacktestConfig,
-    val warnings: List<String> = emptyList()
-)
+data class ImportedStrategy(val packageData: StrategyPackage, val config: BacktestConfig, val warnings: List<String> = emptyList())
 
 object StrategyImportParser {
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
@@ -31,22 +30,19 @@ object StrategyImportParser {
 
     private fun parseJson(text: String): ImportedStrategy {
         val packageData = json.decodeFromString<StrategyPackage>(text)
-        val errors = validate(packageData)
-        require(errors.isEmpty()) { errors.joinToString("\n") }
-        val root = json.parseToJsonElement(text).jsonObject
-        return ImportedStrategy(packageData, configFrom(root, packageData.riskPercent))
+        require(validate(packageData).isEmpty()) { validate(packageData).joinToString("\n") }
+        return ImportedStrategy(packageData, configFrom(json.parseToJsonElement(text).jsonObject, packageData.riskPercent))
     }
 
     private fun parseCsv(text: String): ImportedStrategy {
         val rows = text.lines().filter { it.isNotBlank() }.map { it.split(',').map(String::trim) }
         require(rows.size >= 2 && rows[0].size == rows[1].size) { "CSV باید یک ردیف عنوان و یک ردیف مقدار داشته باشد." }
-        val map = rows[0].zip(rows[1]).toMap()
-        return fromMap(map)
+        return fromMap(rows[0].zip(rows[1]).toMap())
     }
 
     private fun parseKeyValue(text: String): ImportedStrategy {
         val map = text.lines().mapNotNull { line ->
-            val p = line.indexOf('=') .takeIf { it > 0 } ?: line.indexOf(':').takeIf { it > 0 }
+            val p = line.indexOf('=').takeIf { it > 0 } ?: line.indexOf(':').takeIf { it > 0 }
             p?.let { line.substring(0, it).trim() to line.substring(it + 1).trim() }
         }.toMap()
         require(map.isNotEmpty()) { "فرمت فایل قابل تشخیص نیست. از JSON، CSV یا key=value استفاده کنید." }
@@ -54,7 +50,7 @@ object StrategyImportParser {
     }
 
     private fun fromMap(map: Map<String, String>): ImportedStrategy {
-        fun value(vararg keys: String) = keys.firstNotNullOfOrNull { key -> map[key] ?: map.entries.firstOrNull { it.key.equals(key, true) }?.value }
+        fun value(vararg keys: String) = keys.firstNotNullOfOrNull { key -> map.entries.firstOrNull { it.key.equals(key, true) }?.value }
         val p = StrategyPackage(
             id = value("id", "strategyId") ?: "imported_${System.currentTimeMillis()}",
             name = value("name", "strategyName") ?: "Imported Strategy",
@@ -65,12 +61,11 @@ object StrategyImportParser {
             exitRules = value("exitRules")?.split('|', ';').orEmpty(),
             riskPercent = value("riskPercent", "risk")?.toDoubleOrNull() ?: 1.0
         )
-        val errors = validate(p)
-        require(errors.isEmpty()) { errors.joinToString("\n") }
+        require(validate(p).isEmpty()) { validate(p).joinToString("\n") }
         return ImportedStrategy(p, configFromMap(map, p.riskPercent))
     }
 
-    private fun configFrom(root: Map<String, kotlinx.serialization.json.JsonElement>, risk: Double): BacktestConfig {
+    private fun configFrom(root: Map<String, JsonElement>, risk: Double): BacktestConfig {
         fun d(key: String, fallback: Double) = root[key]?.jsonPrimitive?.doubleOrNull ?: fallback
         fun i(key: String, fallback: Int) = root[key]?.jsonPrimitive?.intOrNull ?: fallback
         return BacktestConfig(riskPercent = d("riskPercent", risk), leverage = d("leverage", 10.0), makerFee = d("makerFee", 0.0002), takerFee = d("takerFee", 0.0005), slippageBps = d("slippageBps", 2.0), fastLwma = i("fastLwma", 20), slowLwma = i("slowLwma", 50), atrPeriod = i("atrPeriod", 14), entryAtr = d("entryAtr", 0.5), stopAtr = d("stopAtr", 1.5), takeProfitAtr = d("takeProfitAtr", 3.0), useFunding = root["useFunding"]?.jsonPrimitive?.content?.toBooleanStrictOrNull() ?: true)
@@ -93,7 +88,6 @@ object ImportedStrategyStore {
     private val imported = linkedMapOf<String, ImportedStrategy>()
     var active: ImportedStrategy? = null
         private set
-
     fun register(value: ImportedStrategy) { imported[value.packageData.id] = value; active = value }
     fun get(id: String): ImportedStrategy? = imported[id]
     fun activeId(): String? = active?.packageData?.id
