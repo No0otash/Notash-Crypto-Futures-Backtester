@@ -9,14 +9,14 @@ data class AiStrategySpec(
     val timeframe: String = "1h",
     val entryRules: List<RuleClause> = emptyList(),
     val exitRules: List<RuleClause> = emptyList(),
-    val risk: RiskSpec = RiskSpec(),
+    val risk: AiRiskSpec = AiRiskSpec(),
     val explanation: String = "",
     val assumptions: List<String> = emptyList()
 )
 
 data class RuleClause(val indicator: String, val operator: String, val value: String, val timeframe: String? = null)
 
-data class RiskSpec(
+data class AiRiskSpec(
     val riskPercent: Double = 1.0,
     val stopLossAtr: Double = 1.5,
     val takeProfitAtr: Double = 3.0,
@@ -36,7 +36,6 @@ data class AiStrategyResponse(
     val warnings: List<String> = emptyList()
 )
 
-/** The AI should emit this DSL instead of arbitrary executable Kotlin. */
 object StrategyDsl {
     fun render(s: AiStrategySpec): String = buildString {
         appendLine("strategy ${s.id} v${s.version}")
