@@ -17,6 +17,7 @@ import com.notash.cryptobacktester.data.CoinExRepository
 import com.notash.cryptobacktester.market.MarketRadar
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 private val homeBg = Color(0xFF05070D)
