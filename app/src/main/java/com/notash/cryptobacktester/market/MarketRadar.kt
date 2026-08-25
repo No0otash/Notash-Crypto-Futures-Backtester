@@ -21,7 +21,12 @@ data class GrowthCandidate(
 object MarketRadar {
     fun score(ticker: MarketTicker, maxValue24h: Double = 1.0): Int {
         if (ticker.change24h <= 0.0) return 0
-        val momentum = (ticker.change24h / 12.0).coerceIn(0.0, 1.0) * 45.0
+
+        // Keep the score useful for both large liquid markets and small-cap
+        // candidates. Momentum is the primary signal, while liquidity/activity
+        // provide confirmation. Controlled positive moves receive a larger
+        // early-growth bonus; extreme moves are penalized for chase risk.
+        val momentum = (ticker.change24h / 12.0).coerceIn(0.0, 1.0) * 50.0
         val liquidity = if (maxValue24h > 0.0) relativeLog(ticker.value24h, maxValue24h) * 25.0 else 0.0
         val activity = (abs(ticker.change24h) / 20.0).coerceIn(0.0, 1.0) * 15.0
         val volatilityPenalty = when {
@@ -29,7 +34,12 @@ object MarketRadar {
             ticker.change24h > 15.0 -> 8.0
             else -> 0.0
         }
-        val controlledMomentumBonus = if (ticker.change24h in 1.0..8.0) 15.0 else 0.0
+        val controlledMomentumBonus = when {
+            ticker.change24h in 0.5..8.0 -> 40.0
+            ticker.change24h in 8.0..20.0 -> 10.0
+            else -> 0.0
+        }
+
         return (momentum + liquidity + activity + controlledMomentumBonus - volatilityPenalty)
             .toInt().coerceIn(0, 100)
     }
@@ -38,11 +48,11 @@ object MarketRadar {
     fun isDump(ticker: MarketTicker): Boolean = ticker.change24h <= -5.0
 
     fun riskBand(score: Int, ticker: MarketTicker? = null): String = when {
-        ticker != null && abs(ticker.change24h) > 25.0 -> "بسیار بالا"
-        ticker != null && ticker.value24h > 0.0 && ticker.change24h > 15.0 -> "بالا"
-        score >= 75 -> "متوسط"
-        score >= 60 -> "متوسط"
-        else -> "بالا"
+        ticker != null && abs(ticker.change24h) > 25.0 -> "VERY_HIGH"
+        ticker != null && ticker.value24h > 0.0 && ticker.change24h > 15.0 -> "HIGH"
+        score >= 75 -> "HIGH"
+        score >= 60 -> "MEDIUM"
+        else -> "HIGH"
     }
 
     fun rankGrowthCandidates(tickers: List<MarketTicker>, limit: Int = 5): List<GrowthCandidate> {
