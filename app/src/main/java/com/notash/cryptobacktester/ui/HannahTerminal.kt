@@ -64,23 +64,23 @@ fun HannahTerminal() {
                 Column(Modifier.fillMaxWidth().background(homePanel).padding(20.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(if (fa) "منوی اصلی" else "MAIN MENU", color = homeText, fontSize = 22.sp, fontWeight = FontWeight.Black)
                     Spacer(Modifier.height(8.dp))
-                    MenuItem(if (fa) "🏠 صفحه اصلی" else "🏠 Home") { page = "home"; scope.launch { drawer.close() } }
-                    MenuItem(if (fa) "📊 ترمینال حرفه‌ای" else "📊 Professional Terminal") { page = "terminal"; scope.launch { drawer.close() } }
-                    MenuItem(if (fa) "🤖 وارد کردن استراتژی / ربات" else "🤖 Import Strategy / Bot") { page = "strategy"; scope.launch { drawer.close() } }
-                    MenuItem(if (fa) "🧠 ساخت استراتژی با AI" else "🧠 AI Strategy Builder") { page = "ai-builder"; scope.launch { drawer.close() } }
-                    MenuItem(if (fa) "🪙 ۱۰ ارز منتخب" else "🪙 Top 10 Coins") { page = "coins"; scope.launch { drawer.close() } }
-                    MenuItem(if (fa) "📈 تحلیل بازار AI" else "📈 AI Market Radar") { page = "radar"; scope.launch { drawer.close() } }
-                    MenuItem(if (fa) "🚀 راهنمای اتصال به صرافی" else "🚀 Exchange Deployment Guide") { page = "deployment"; scope.launch { drawer.close() } }
+                    MenuItem(if (fa) "🏠 صفحه اصلی" else "🏠 Home") { page = "home"; scope.launch { drawer.close() }; Unit }
+                    MenuItem(if (fa) "📊 ترمینال حرفه‌ای" else "📊 Professional Terminal") { page = "terminal"; scope.launch { drawer.close() }; Unit }
+                    MenuItem(if (fa) "🤖 وارد کردن استراتژی / ربات" else "🤖 Import Strategy / Bot") { page = "strategy"; scope.launch { drawer.close() }; Unit }
+                    MenuItem(if (fa) "🧠 ساخت استراتژی با AI" else "🧠 AI Strategy Builder") { page = "ai-builder"; scope.launch { drawer.close() }; Unit }
+                    MenuItem(if (fa) "🪙 ۱۰ ارز منتخب" else "🪙 Top 10 Coins") { page = "coins"; scope.launch { drawer.close() }; Unit }
+                    MenuItem(if (fa) "📈 تحلیل بازار AI" else "📈 AI Market Radar") { page = "radar"; scope.launch { drawer.close() }; Unit }
+                    MenuItem(if (fa) "🚀 راهنمای اتصال به صرافی" else "🚀 Exchange Deployment Guide") { page = "deployment"; scope.launch { drawer.close() }; Unit }
                     Spacer(Modifier.height(8.dp))
                     Text(if (fa) "زبان" else "LANGUAGE", color = homeMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                    MenuItem(if (fa) "English" else "فارسی") { fa = !fa }
+                    MenuItem(if (fa) "English" else "فارسی") { fa = !fa; Unit }
                 }
             }
         }
     ) {
         Column(Modifier.fillMaxSize().background(homeBg)) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                TextButton(onClick = { scope.launch { drawer.open() } }) { Text("☰  ${if (fa) "منو" else "MENU"}", color = homeCyan, fontSize = 18.sp, fontWeight = FontWeight.Bold) }
+                TextButton(onClick = { scope.launch { drawer.open() }; Unit }) { Text("☰  ${if (fa) "منو" else "MENU"}", color = homeCyan, fontSize = 18.sp, fontWeight = FontWeight.Bold) }
                 Text("HANNAH", color = homeText, fontSize = 18.sp, fontWeight = FontWeight.Black, modifier = Modifier.weight(1f))
             }
             when (page) {
