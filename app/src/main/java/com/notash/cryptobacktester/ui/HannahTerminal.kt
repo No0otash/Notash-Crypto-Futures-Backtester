@@ -16,6 +16,7 @@ import com.notash.cryptobacktester.core.MarketTicker
 import com.notash.cryptobacktester.data.CoinExRepository
 import com.notash.cryptobacktester.market.MarketRadar
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 private val homeBg = Color(0xFF05070D)
@@ -40,7 +41,7 @@ fun HannahTerminal() {
     var carouselPage by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(Unit) {
-        while (true) {
+        while (isActive) {
             try { tickers = repository.loadAllFuturesMarkets(); error = null }
             catch (e: Exception) { error = e.message ?: if (fa) "خطا در دریافت بازار" else "Market data error" }
             finally { loading = false }
@@ -57,36 +58,38 @@ fun HannahTerminal() {
         }
     }
 
-    ModalNavigationDrawer(
-        drawerState = drawer,
-        drawerContent = {
-            ModalDrawerSheet {
-                Column(Modifier.fillMaxWidth().background(homePanel).padding(20.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(if (fa) "منوی اصلی" else "MAIN MENU", color = homeText, fontSize = 22.sp, fontWeight = FontWeight.Black)
-                    Spacer(Modifier.height(8.dp))
-                    MenuItem(if (fa) "🏠 صفحه اصلی" else "🏠 Home") { page = "home"; scope.launch { drawer.close() }; Unit }
-                    MenuItem(if (fa) "📊 ترمینال حرفه‌ای" else "📊 Professional Terminal") { page = "terminal"; scope.launch { drawer.close() }; Unit }
-                    MenuItem(if (fa) "🤖 وارد کردن استراتژی / ربات" else "🤖 Import Strategy / Bot") { page = "strategy"; scope.launch { drawer.close() }; Unit }
-                    MenuItem(if (fa) "🧠 ساخت استراتژی با AI" else "🧠 AI Strategy Builder") { page = "ai-builder"; scope.launch { drawer.close() }; Unit }
-                    MenuItem(if (fa) "🪙 ۱۰ ارز منتخب" else "🪙 Top 10 Coins") { page = "coins"; scope.launch { drawer.close() }; Unit }
-                    MenuItem(if (fa) "📈 تحلیل بازار AI" else "📈 AI Market Radar") { page = "radar"; scope.launch { drawer.close() }; Unit }
-                    MenuItem(if (fa) "🚀 راهنمای اتصال به صرافی" else "🚀 Exchange Deployment Guide") { page = "deployment"; scope.launch { drawer.close() }; Unit }
-                    Spacer(Modifier.height(8.dp))
-                    Text(if (fa) "زبان" else "LANGUAGE", color = homeMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                    MenuItem(if (fa) "English" else "فارسی") { fa = !fa; Unit }
-                }
+    ModalNavigationDrawer(drawerState = drawer, drawerContent = {
+        ModalDrawerSheet {
+            Column(Modifier.fillMaxWidth().background(homePanel).padding(20.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(if (fa) "منوی اصلی" else "MAIN MENU", color = homeText, fontSize = 22.sp, fontWeight = FontWeight.Black)
+                Spacer(Modifier.height(8.dp))
+                MenuItem(if (fa) "🏠 صفحه اصلی" else "🏠 Home") { page = "home"; scope.launch { drawer.close() } }
+                MenuItem(if (fa) "📊 ترمینال حرفه‌ای" else "📊 Professional Terminal") { page = "terminal"; scope.launch { drawer.close() } }
+                MenuItem(if (fa) "🤖 وارد کردن استراتژی / ربات" else "🤖 Import Strategy / Bot") { page = "strategy"; scope.launch { drawer.close() } }
+                MenuItem(if (fa) "🧠 ساخت استراتژی با AI" else "🧠 AI Strategy Builder") { page = "ai-builder"; scope.launch { drawer.close() } }
+                MenuItem(if (fa) "🪙 ۱۰ ارز منتخب" else "🪙 Top 10 Coins") { page = "coins"; scope.launch { drawer.close() } }
+                MenuItem(if (fa) "📈 تحلیل بازار AI" else "📈 AI Market Radar") { page = "radar"; scope.launch { drawer.close() } }
+                MenuItem(if (fa) "🚀 راهنمای اتصال به صرافی" else "🚀 Exchange Deployment Guide") { page = "deployment"; scope.launch { drawer.close() } }
+                Spacer(Modifier.height(8.dp))
+                Text(if (fa) "زبان" else "LANGUAGE", color = homeMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                MenuItem(if (fa) "English" else "فارسی") { fa = !fa }
             }
         }
-    ) {
+    }) {
         Column(Modifier.fillMaxSize().background(homeBg)) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                TextButton(onClick = { scope.launch { drawer.open() }; Unit }) { Text("☰  ${if (fa) "منو" else "MENU"}", color = homeCyan, fontSize = 18.sp, fontWeight = FontWeight.Bold) }
+                TextButton(onClick = { scope.launch { drawer.open() } }) { Text("☰  ${if (fa) "منو" else "MENU"}", color = homeCyan, fontSize = 18.sp, fontWeight = FontWeight.Bold) }
                 Text("HANNAH", color = homeText, fontSize = 18.sp, fontWeight = FontWeight.Black, modifier = Modifier.weight(1f))
             }
             when (page) {
                 "terminal" -> ProfessionalTerminal()
                 "strategy" -> StrategyImportPage(fa = fa) { }
-                "ai-builder" -> AiStrategyBuilderPage(fa = fa, onGenerate = { /* backend adapter plugs in here */ }, onUseForBacktest = { }, onSave = { })
+                "ai-builder" -> AiStrategyBuilderPage(
+                    fa = fa,
+                    onGenerate = { /* secure AI gateway adapter */ },
+                    onUseForBacktest = { /* strategy registry adapter */ },
+                    onSave = { /* strategy persistence adapter */ }
+                )
                 "coins" -> Top10Page(tickers, fa) { page = "terminal" }
                 "radar" -> MarketRadarPage(tickers, fa)
                 "deployment" -> DeploymentGuidePage(fa)
@@ -96,9 +99,7 @@ fun HannahTerminal() {
     }
 }
 
-@Composable private fun MenuItem(text: String, onClick: () -> Unit) {
-    TextButton(onClick = onClick, modifier = Modifier.fillMaxWidth()) { Text(text, color = homeText, fontSize = 14.sp, modifier = Modifier.fillMaxWidth()) }
-}
+@Composable private fun MenuItem(text: String, onClick: () -> Unit) { TextButton(onClick = onClick, modifier = Modifier.fillMaxWidth()) { Text(text, color = homeText, fontSize = 14.sp, modifier = Modifier.fillMaxWidth()) } }
 
 @Composable private fun DeploymentGuidePage(fa: Boolean) {
     var exchange by remember { mutableStateOf("CoinEx") }
@@ -128,5 +129,3 @@ fun HannahTerminal() {
 
 @Composable private fun TickerRow(t: MarketTicker) { Row(Modifier.fillMaxWidth().padding(vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) { Text(t.market, color = homeText, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f)); Column(horizontalAlignment = Alignment.End) { Text("${"%.6f".format(t.last)}", color = homeText, fontSize = 11.sp); Text("${if (t.change24h >= 0) "+" else ""}${"%.2f".format(t.change24h)}%", color = if (t.change24h >= 0) homeGreen else homeRed, fontWeight = FontWeight.Bold, fontSize = 10.sp) } } }
 @Composable private fun MarketMovementCard(title: String, markets: List<MarketTicker>, fa: Boolean, accent: Color) { Card(colors = CardDefaults.cardColors(containerColor = homePanel)) { Column(Modifier.padding(14.dp)) { Text(title, color = accent, fontWeight = FontWeight.Black); if (markets.isEmpty()) Text(if (fa) "حرکت غیرعادی فعلاً شناسایی نشد." else "No unusual move detected.", color = homeMuted, fontSize = 10.sp); markets.forEach { t -> Text("${t.market}   ${if (t.change24h >= 0) "+" else ""}${"%.2f".format(t.change24h)}%", color = accent, fontSize = 11.sp, modifier = Modifier.padding(top = 6.dp)) } } } }
-@Composable private fun MarketRadarPage(tickers: List<MarketTicker>, fa: Boolean) { val candidates = MarketRadar.rankGrowthCandidates(tickers, 10); LazyColumn(Modifier.fillMaxSize().padding(14.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) { item { Text(if (fa) "تحلیل هوش مصنوعی بازار" else "AI MARKET RADAR", color = homeCyan, fontSize = 24.sp, fontWeight = FontWeight.Black); Text(if (fa) "رصد کل بازار، سپس معرفی فقط گزینه‌های با امتیاز رشد بالا" else "Scan the market universe, then surface only high-score growth candidates.", color = homeMuted, fontSize = 10.sp) }; items(candidates) { c -> Card(colors = CardDefaults.cardColors(containerColor = homePanel)) { Column(Modifier.padding(14.dp)) { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text(c.market, color = homeText, fontWeight = FontWeight.Black); Text("${c.score}/100", color = if (c.score >= 75) homeGreen else homeAmber, fontWeight = FontWeight.Bold) }; Text(if (fa) "تغییر ۲۴ساعته: ${"%.2f".format(c.change24h)}%" else "24h change: ${"%.2f".format(c.change24h)}%", color = homeMuted, fontSize = 10.sp); Text(c.reasons.joinToString(" • "), color = homeCyan, fontSize = 10.sp, modifier = Modifier.padding(top = 5.dp)); Text(if (fa) "ریسک: ${c.risk}" else "Risk: ${c.risk}", color = homeAmber, fontSize = 9.sp, modifier = Modifier.padding(top = 4.dp)) } } } } }
-@Composable private fun Top10Page(tickers: List<MarketTicker>, fa: Boolean, select: (String) -> Unit) { val markets = tickers.take(10); LazyColumn(Modifier.fillMaxSize().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) { item { Text(if (fa) "۱۰ ارز منتخب" else "TOP 10 FUTURES", color = homeCyan, fontSize = 23.sp, fontWeight = FontWeight.Black) }; items(markets) { t -> Button(onClick = { select(t.market) }, modifier = Modifier.fillMaxWidth()) { Text("${t.market}   ${"%.2f".format(t.change24h)}%") } } } }
