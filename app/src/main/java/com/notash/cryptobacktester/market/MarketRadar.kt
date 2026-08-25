@@ -22,10 +22,9 @@ object MarketRadar {
     fun score(ticker: MarketTicker, maxValue24h: Double = 1.0): Int {
         if (ticker.change24h <= 0.0) return 0
 
-        // Keep the score useful for both large liquid markets and small-cap
-        // candidates. Momentum is the primary signal, while liquidity/activity
-        // provide confirmation. Controlled positive moves receive a larger
-        // early-growth bonus; extreme moves are penalized for chase risk.
+        // Positive momentum establishes candidate eligibility. Momentum,
+        // liquidity and activity then rank candidates. Extreme moves are
+        // penalized because a large pump is not automatically a good entry.
         val momentum = (ticker.change24h / 12.0).coerceIn(0.0, 1.0) * 50.0
         val liquidity = if (maxValue24h > 0.0) relativeLog(ticker.value24h, maxValue24h) * 25.0 else 0.0
         val activity = (abs(ticker.change24h) / 20.0).coerceIn(0.0, 1.0) * 15.0
@@ -34,13 +33,9 @@ object MarketRadar {
             ticker.change24h > 15.0 -> 8.0
             else -> 0.0
         }
-        val controlledMomentumBonus = when {
-            ticker.change24h in 0.5..8.0 -> 40.0
-            ticker.change24h in 8.0..20.0 -> 10.0
-            else -> 0.0
-        }
+        val positiveCandidateBonus = 45.0
 
-        return (momentum + liquidity + activity + controlledMomentumBonus - volatilityPenalty)
+        return (momentum + liquidity + activity + positiveCandidateBonus - volatilityPenalty)
             .toInt().coerceIn(0, 100)
     }
 
