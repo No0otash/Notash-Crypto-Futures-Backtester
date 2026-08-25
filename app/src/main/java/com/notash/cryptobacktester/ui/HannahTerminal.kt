@@ -41,65 +41,59 @@ fun HannahTerminal() {
 
     LaunchedEffect(Unit) {
         while (true) {
-            try {
-                tickers = repository.loadAllFuturesMarkets()
-                error = null
-            } catch (e: Exception) {
-                error = e.message ?: if (fa) "خطا در دریافت بازار" else "Market data error"
-            } finally { loading = false }
+            try { tickers = repository.loadAllFuturesMarkets(); error = null }
+            catch (e: Exception) { error = e.message ?: if (fa) "خطا در دریافت بازار" else "Market data error" }
+            finally { loading = false }
             delay(10_000)
         }
     }
     LaunchedEffect(tickers.size) {
         carouselPage = 0
-        if (tickers.size > 4) while (true) {
-            delay(5_000)
-            carouselPage = (carouselPage + 1) % ((tickers.size + 3) / 4)
+        if (tickers.size > 4) {
+            while (isActive) {
+                delay(5_000)
+                carouselPage = (carouselPage + 1) % ((tickers.size + 3) / 4)
+            }
         }
     }
-    val openMenu = { scope.launch { drawer.open() } }
 
-    MaterialTheme(colorScheme = darkColorScheme(background = homeBg, surface = homePanel, primary = homeCyan)) {
-        ModalNavigationDrawer(
-            drawerState = drawer,
-            drawerContent = {
-                ModalDrawerSheet {
-                    Column(Modifier.fillMaxWidth().background(homePanel).padding(20.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(if (fa) "منوی اصلی" else "MAIN MENU", color = homeText, fontSize = 22.sp, fontWeight = FontWeight.Black)
-                        Spacer(Modifier.height(8.dp))
-                        MenuItem(if (fa) "🏠 صفحه اصلی" else "🏠 Home") { page = "home"; scope.launch { drawer.close() } }
-                        MenuItem(if (fa) "📊 ترمینال حرفه‌ای" else "📊 Professional Terminal") { page = "terminal"; scope.launch { drawer.close() } }
-                        MenuItem(if (fa) "🤖 وارد کردن استراتژی / ربات" else "🤖 Import Strategy / Bot") { page = "strategy"; scope.launch { drawer.close() } }
-                        MenuItem(if (fa) "🪙 ۱۰ ارز منتخب" else "🪙 Top 10 Coins") { page = "coins"; scope.launch { drawer.close() } }
-                        MenuItem(if (fa) "📈 تحلیل بازار AI" else "📈 AI Market Radar") { page = "radar"; scope.launch { drawer.close() } }
-                        Spacer(Modifier.height(8.dp))
-                        Text(if (fa) "زبان" else "LANGUAGE", color = homeMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                        MenuItem(if (fa) "English" else "فارسی") { fa = !fa }
-                    }
+    ModalNavigationDrawer(
+        drawerState = drawer,
+        drawerContent = {
+            ModalDrawerSheet {
+                Column(Modifier.fillMaxWidth().background(homePanel).padding(20.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(if (fa) "منوی اصلی" else "MAIN MENU", color = homeText, fontSize = 22.sp, fontWeight = FontWeight.Black)
+                    Spacer(Modifier.height(8.dp))
+                    MenuItem(if (fa) "🏠 صفحه اصلی" else "🏠 Home") { page = "home"; scope.launch { drawer.close() } }
+                    MenuItem(if (fa) "📊 ترمینال حرفه‌ای" else "📊 Professional Terminal") { page = "terminal"; scope.launch { drawer.close() } }
+                    MenuItem(if (fa) "🤖 وارد کردن استراتژی / ربات" else "🤖 Import Strategy / Bot") { page = "strategy"; scope.launch { drawer.close() } }
+                    MenuItem(if (fa) "🪙 ۱۰ ارز منتخب" else "🪙 Top 10 Coins") { page = "coins"; scope.launch { drawer.close() } }
+                    MenuItem(if (fa) "📈 تحلیل بازار AI" else "📈 AI Market Radar") { page = "radar"; scope.launch { drawer.close() } }
+                    Spacer(Modifier.height(8.dp))
+                    Text(if (fa) "زبان" else "LANGUAGE", color = homeMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    MenuItem(if (fa) "English" else "فارسی") { fa = !fa }
                 }
             }
-        ) {
-            Column(Modifier.fillMaxSize().background(homeBg)) {
-                Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    TextButton(onClick = openMenu) { Text("☰  ${if (fa) "منو" else "MENU"}", color = homeCyan, fontSize = 18.sp, fontWeight = FontWeight.Bold) }
-                    Text("HANNAH", color = homeText, fontSize = 18.sp, fontWeight = FontWeight.Black, modifier = Modifier.weight(1f))
-                }
-                when (page) {
-                    "terminal" -> ProfessionalTerminal()
-                    "strategy" -> StrategyImportPage(fa = fa) { }
-                    "coins" -> Top10Page(tickers, fa) { page = "terminal" }
-                    "radar" -> MarketRadarPage(tickers, fa)
-                    else -> HomePage(tickers, loading, error, carouselPage, fa)
-                }
+        }
+    ) {
+        Column(Modifier.fillMaxSize().background(homeBg)) {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                TextButton(onClick = { scope.launch { drawer.open() } }) { Text("☰  ${if (fa) "منو" else "MENU"}", color = homeCyan, fontSize = 18.sp, fontWeight = FontWeight.Bold) }
+                Text("HANNAH", color = homeText, fontSize = 18.sp, fontWeight = FontWeight.Black, modifier = Modifier.weight(1f))
+            }
+            when (page) {
+                "terminal" -> ProfessionalTerminal()
+                "strategy" -> StrategyImportPage(fa = fa) { }
+                "coins" -> Top10Page(tickers, fa) { page = "terminal" }
+                "radar" -> MarketRadarPage(tickers, fa)
+                else -> HomePage(tickers, loading, error, carouselPage, fa)
             }
         }
     }
 }
 
 @Composable private fun MenuItem(text: String, onClick: () -> Unit) {
-    TextButton(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
-        Text(text, color = homeText, fontSize = 14.sp, modifier = Modifier.fillMaxWidth())
-    }
+    TextButton(onClick = onClick, modifier = Modifier.fillMaxWidth()) { Text(text, color = homeText, fontSize = 14.sp, modifier = Modifier.fillMaxWidth()) }
 }
 
 @Composable private fun HomePage(tickers: List<MarketTicker>, loading: Boolean, error: String?, carouselPage: Int, fa: Boolean) {
@@ -118,10 +112,7 @@ fun HannahTerminal() {
         }
         item { Card(colors = CardDefaults.cardColors(containerColor = homePanel)) {
             Column(Modifier.padding(12.dp)) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(if (fa) "قیمت لحظه‌ای" else "LIVE PRICES", color = homeText, fontWeight = FontWeight.Bold)
-                    Text("${visible.size}/4", color = homeCyan, fontSize = 10.sp)
-                }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text(if (fa) "قیمت لحظه‌ای" else "LIVE PRICES", color = homeText, fontWeight = FontWeight.Bold); Text("${visible.size}/4", color = homeCyan, fontSize = 10.sp) }
                 if (loading && visible.isEmpty()) Text(if (fa) "در حال دریافت داده…" else "Loading market data…", color = homeMuted, modifier = Modifier.padding(top = 12.dp))
                 visible.forEach { TickerRow(it) }
             }
@@ -148,10 +139,7 @@ fun HannahTerminal() {
 @Composable private fun TickerRow(t: MarketTicker) {
     Row(Modifier.fillMaxWidth().padding(vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(t.market, color = homeText, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-        Column(horizontalAlignment = Alignment.End) {
-            Text("${"%.6f".format(t.last)}", color = homeText, fontSize = 11.sp)
-            Text("${if (t.change24h >= 0) "+" else ""}${"%.2f".format(t.change24h)}%", color = if (t.change24h >= 0) homeGreen else homeRed, fontWeight = FontWeight.Bold, fontSize = 10.sp)
-        }
+        Column(horizontalAlignment = Alignment.End) { Text("${"%.6f".format(t.last)}", color = homeText, fontSize = 11.sp); Text("${if (t.change24h >= 0) "+" else ""}${"%.2f".format(t.change24h)}%", color = if (t.change24h >= 0) homeGreen else homeRed, fontWeight = FontWeight.Bold, fontSize = 10.sp) }
     }
 }
 
@@ -169,10 +157,7 @@ fun HannahTerminal() {
         item { Text(if (fa) "تحلیل هوش مصنوعی بازار" else "AI MARKET RADAR", color = homeCyan, fontSize = 24.sp, fontWeight = FontWeight.Black) }
         item { Text(if (fa) "رصد کل بازار، سپس معرفی فقط گزینه‌های با امتیاز رشد بالا" else "Scan the market universe, then surface only high-score growth candidates.", color = homeMuted, fontSize = 10.sp) }
         items(candidates) { c -> Card(colors = CardDefaults.cardColors(containerColor = homePanel)) { Column(Modifier.padding(14.dp)) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(c.market, color = homeText, fontWeight = FontWeight.Black)
-                Text("${c.score}/100", color = if (c.score >= 75) homeGreen else homeAmber, fontWeight = FontWeight.Bold)
-            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text(c.market, color = homeText, fontWeight = FontWeight.Black); Text("${c.score}/100", color = if (c.score >= 75) homeGreen else homeAmber, fontWeight = FontWeight.Bold) }
             Text(if (fa) "تغییر ۲۴ساعته: ${"%.2f".format(c.change24h)}%" else "24h change: ${"%.2f".format(c.change24h)}%", color = homeMuted, fontSize = 10.sp)
             Text(c.reasons.joinToString(" • "), color = homeCyan, fontSize = 10.sp, modifier = Modifier.padding(top = 5.dp))
             Text(if (fa) "ریسک: ${c.risk}" else "Risk: ${c.risk}", color = homeAmber, fontSize = 9.sp, modifier = Modifier.padding(top = 4.dp))
