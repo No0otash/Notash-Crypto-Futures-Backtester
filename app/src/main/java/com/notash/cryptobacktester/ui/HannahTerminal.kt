@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.sp
 import com.notash.cryptobacktester.core.MarketTicker
 import com.notash.cryptobacktester.data.CoinExRepository
 import com.notash.cryptobacktester.market.MarketRadar
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -47,10 +48,11 @@ fun HannahTerminal() {
             delay(10_000)
         }
     }
+
     LaunchedEffect(tickers.size) {
         carouselPage = 0
         if (tickers.size > 4) {
-            while (isActive) {
+            while (currentCoroutineContext().isActive) {
                 delay(5_000)
                 carouselPage = (carouselPage + 1) % ((tickers.size + 3) / 4)
             }
@@ -64,14 +66,14 @@ fun HannahTerminal() {
                 Column(Modifier.fillMaxWidth().background(homePanel).padding(20.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(if (fa) "منوی اصلی" else "MAIN MENU", color = homeText, fontSize = 22.sp, fontWeight = FontWeight.Black)
                     Spacer(Modifier.height(8.dp))
-                    MenuItem(if (fa) "🏠 صفحه اصلی" else "🏠 Home") { page = "home"; scope.launch { drawer.close() } }
-                    MenuItem(if (fa) "📊 ترمینال حرفه‌ای" else "📊 Professional Terminal") { page = "terminal"; scope.launch { drawer.close() } }
-                    MenuItem(if (fa) "🤖 وارد کردن استراتژی / ربات" else "🤖 Import Strategy / Bot") { page = "strategy"; scope.launch { drawer.close() } }
-                    MenuItem(if (fa) "🪙 ۱۰ ارز منتخب" else "🪙 Top 10 Coins") { page = "coins"; scope.launch { drawer.close() } }
-                    MenuItem(if (fa) "📈 تحلیل بازار AI" else "📈 AI Market Radar") { page = "radar"; scope.launch { drawer.close() } }
+                    MenuItem(if (fa) "🏠 صفحه اصلی" else "🏠 Home") { page = "home"; scope.launch { drawer.close() }; Unit }
+                    MenuItem(if (fa) "📊 ترمینال حرفه‌ای" else "📊 Professional Terminal") { page = "terminal"; scope.launch { drawer.close() }; Unit }
+                    MenuItem(if (fa) "🤖 وارد کردن استراتژی / ربات" else "🤖 Import Strategy / Bot") { page = "strategy"; scope.launch { drawer.close() }; Unit }
+                    MenuItem(if (fa) "🪙 ۱۰ ارز منتخب" else "🪙 Top 10 Coins") { page = "coins"; scope.launch { drawer.close() }; Unit }
+                    MenuItem(if (fa) "📈 تحلیل بازار AI" else "📈 AI Market Radar") { page = "radar"; scope.launch { drawer.close() }; Unit }
                     Spacer(Modifier.height(8.dp))
                     Text(if (fa) "زبان" else "LANGUAGE", color = homeMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                    MenuItem(if (fa) "English" else "فارسی") { fa = !fa }
+                    MenuItem(if (fa) "English" else "فارسی") { fa = !fa; Unit }
                 }
             }
         }
