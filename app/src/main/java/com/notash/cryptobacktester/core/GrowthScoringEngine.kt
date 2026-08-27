@@ -9,7 +9,7 @@ object GrowthScoringEngine {
         earlySignals: List<String>
     ): GrowthCandidate {
         val supply = intelligence.tokenSupply
-        val unlockRisk = unlockRisk(intelligence)
+        val unlockRisk = unlockRisk(intelligence, market.timestamp)
         val burn = burnScore(intelligence)
         val confidence = intelligence.dataConfidence.coerceIn(0, 100)
         val product = if (intelligence.product.isNullOrBlank()) 0 else if (intelligence.utility.isNullOrBlank()) 45 else 90
@@ -93,9 +93,13 @@ object GrowthScoringEngine {
         }
     }
 
-    private fun unlockRisk(i: TokenIntelligence): Int {
-        if (i.unlocks.isEmpty()) return if (i.dataConfidence >= 70) 75 else 0
-        val upcoming = i.unlocks.filter { it.timestamp > 0 }.sumOf { it.percentOfSupply }
+    private fun unlockRisk(i: TokenIntelligence, nowMillis: Long): Int {
+        // Missing unlock data is unknown, never positive evidence.
+        if (i.unlocks.isEmpty()) return 0
+        val horizon = nowMillis + 90L * 24L * 60L * 60L * 1000L
+        val upcoming = i.unlocks
+            .filter { it.timestamp in (nowMillis + 1)..horizon }
+            .sumOf { it.percentOfSupply.coerceAtLeast(0.0) }
         return when {
             upcoming <= 2 -> 95
             upcoming <= 5 -> 80
