@@ -17,6 +17,15 @@ android {
         versionName = "2.0.0"
     }
 
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+        }
+        resources {
+            excludes += setOf("META-INF/DEPENDENCIES", "META-INF/LICENSE", "META-INF/LICENSE.txt", "META-INF/NOTICE", "META-INF/NOTICE.txt")
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
