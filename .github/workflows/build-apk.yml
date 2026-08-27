@@ -3,7 +3,7 @@ name: Build Android APK
 on:
   workflow_dispatch:
   push:
-    branches: [ main, 'redesign/**' ]
+    branches: [ main, 'redesign/**', 'global-product-v4' ]
   pull_request:
     branches: [ main ]
 
@@ -29,5 +29,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Notash-Crypto-Futures-Backtester-v2
+          name: Notash-Crypto-Futures-Backtester-v4
           path: app/build/outputs/apk/debug/app-debug.apk
