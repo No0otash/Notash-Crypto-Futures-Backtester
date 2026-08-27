@@ -1,7 +1,7 @@
 package com.notash.cryptobacktester.core
 
-import kotlin.test.Test
-import kotlin.test.assertTrue
+import org.junit.Test
+import org.junit.Assert.assertTrue
 
 class TokenRiskAnalyzerTest {
     @Test
