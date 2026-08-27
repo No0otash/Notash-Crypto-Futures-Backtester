@@ -1,7 +1,7 @@
 package com.notash.cryptobacktester.core
 
-import kotlin.test.Test
-import kotlin.test.assertEquals
+import org.junit.Test
+import org.junit.Assert.assertEquals
 
 class TokenomicsAnalyzerTest {
     @Test
@@ -19,9 +19,9 @@ class TokenomicsAnalyzerTest {
             burnPercentAnnual = 1.0
         )
         val result = TokenomicsAnalyzer.analyze(token, now)
-        assertEquals(32.0, result.circulatingPercent)
-        assertEquals(7.0, result.netSupplyChangePercent)
-        assertEquals(5.0, result.next90DayUnlockPercent)
+        assertEquals(32.0, result.circulatingPercent, 0.0001)
+        assertEquals(7.0, result.netSupplyChangePercent, 0.0001)
+        assertEquals(5.0, result.next90DayUnlockPercent, 0.0001)
         assertEquals(60, result.unlockRiskScore)
     }
 }
