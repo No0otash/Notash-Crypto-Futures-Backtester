@@ -62,3 +62,5 @@ https://docs.coinex.com/api/v2/
 ## GitHub
 
 کل پوشه را می‌توان در یک Repository قرار داد.
+
+<!-- CI trigger after UI compile fixes -->
