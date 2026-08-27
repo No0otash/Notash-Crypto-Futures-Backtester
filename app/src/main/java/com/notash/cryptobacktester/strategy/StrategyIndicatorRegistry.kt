@@ -1,8 +1,8 @@
 package com.notash.cryptobacktester.strategy
 
 /**
- * Converts a strategy's declared indicator configuration into chart-ready specs.
- * The chart must consume this registry rather than maintaining a second indicator list.
+ * Single source of truth for indicators declared by a strategy.
+ * UI/chart layers consume these specs instead of maintaining a second list.
  */
 object StrategyIndicatorRegistry {
     fun fromPeriods(
