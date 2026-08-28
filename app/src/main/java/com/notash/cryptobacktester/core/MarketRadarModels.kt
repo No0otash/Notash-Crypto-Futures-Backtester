@@ -70,7 +70,8 @@ data class MarketSnapshot(
     val btcDominance: Double? = null,
     val sectorScore: Int = 0,
     val momentumScore: Int = 0,
-    val relativeStrengthScore: Int = 0
+    val relativeStrengthScore: Int = 0,
+    val timestamp: Long = System.currentTimeMillis()
 )
 
 @Serializable
