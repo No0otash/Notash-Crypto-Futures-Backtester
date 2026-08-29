@@ -4,11 +4,6 @@ import com.notash.cryptobacktester.core.MarketTicker
 import kotlin.math.abs
 import kotlin.math.ln
 
-/**
- * On-device market radar. It scans every futures ticker returned by CoinEx,
- * including low-cap/high-volatility markets. Scores describe signal strength,
- * not guaranteed future performance.
- */
 data class GrowthCandidate(
     val market: String,
     val score: Int,
@@ -30,19 +25,19 @@ object MarketRadar {
             else -> 0.0
         }
         val controlledMomentumBonus = if (ticker.change24h in 1.0..8.0) 15.0 else 0.0
-        return (momentum + liquidity + activity + controlledMomentumBonus - volatilityPenalty)
-            .toInt().coerceIn(0, 100)
+        return (momentum + liquidity + activity + controlledMomentumBonus - volatilityPenalty).toInt().coerceIn(0, 100)
     }
 
     fun isPump(ticker: MarketTicker): Boolean = ticker.change24h >= 5.0
     fun isDump(ticker: MarketTicker): Boolean = ticker.change24h <= -5.0
 
+    /** Stable machine-readable bands used by tests/export; UI may localize the label. */
     fun riskBand(score: Int, ticker: MarketTicker? = null): String = when {
-        ticker != null && abs(ticker.change24h) > 25.0 -> "بسیار بالا"
-        ticker != null && ticker.value24h > 0.0 && ticker.change24h > 15.0 -> "بالا"
-        score >= 75 -> "متوسط"
-        score >= 60 -> "متوسط"
-        else -> "بالا"
+        ticker != null && abs(ticker.change24h) > 25.0 -> "VERY_HIGH"
+        ticker != null && ticker.value24h > 0.0 && ticker.change24h > 15.0 -> "HIGH"
+        score >= 75 -> "HIGH"
+        score >= 60 -> "MEDIUM"
+        else -> "HIGH"
     }
 
     fun rankGrowthCandidates(tickers: List<MarketTicker>, limit: Int = 5): List<GrowthCandidate> {
@@ -60,14 +55,7 @@ object MarketRadar {
                     if (isPump(ticker)) add("حرکت غیرعادی صعودی")
                     if (ticker.change24h > 15.0) add("نوسان شدید؛ نیازمند احتیاط")
                 }
-                GrowthCandidate(
-                    market = ticker.market,
-                    score = score,
-                    change24h = ticker.change24h,
-                    value24h = ticker.value24h,
-                    risk = riskBand(score, ticker),
-                    reasons = reasons.ifEmpty { listOf("سیگنال ترکیبی بازار") }
-                )
+                GrowthCandidate(ticker.market, score, ticker.change24h, ticker.value24h, riskBand(score, ticker), reasons.ifEmpty { listOf("سیگنال ترکیبی بازار") })
             }
             .filter { it.score >= 60 }
             .sortedWith(compareByDescending<GrowthCandidate> { it.score }.thenByDescending { it.change24h })
