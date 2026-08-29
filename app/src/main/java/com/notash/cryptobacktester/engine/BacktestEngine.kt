@@ -3,6 +3,7 @@ package com.notash.cryptobacktester.engine
 import com.notash.cryptobacktester.core.BacktestConfig
 import com.notash.cryptobacktester.core.BacktestReport
 import com.notash.cryptobacktester.core.Candle
+import com.notash.cryptobacktester.core.ExitReason
 import com.notash.cryptobacktester.core.FundingRate
 import com.notash.cryptobacktester.core.OrderType
 import com.notash.cryptobacktester.core.Position
@@ -49,7 +50,8 @@ class BacktestEngine {
             if (currentPosition != null) {
                 val exit = checkExit(currentPosition, candle)
                 if (exit != null) {
-                    val exitPrice = applyExitSlippage(exit, currentPosition.side, config)
+                    val (exitPriceRaw, exitReason) = exit
+                    val exitPrice = applyExitSlippage(exitPriceRaw, currentPosition.side, config)
                     val grossPnl = calculatePnl(currentPosition, exitPrice)
                     val exitFee = abs(exitPrice * currentPosition.quantity) * config.takerFee
                     val fundingCost = calculateFunding(currentPosition, funding, candle.timestamp, config)
@@ -57,7 +59,13 @@ class BacktestEngine {
                     balance += netPnl
                     totalFees += exitFee
                     totalFunding += fundingCost
-                    trades += TradeResult(currentPosition.side, currentPosition.entryPrice, exitPrice, currentPosition.quantity, grossPnl, exitFee, fundingCost, netPnl, currentPosition.entryTime, candle.timestamp)
+                    trades += TradeResult(
+                        currentPosition.side, currentPosition.entryPrice, exitPrice,
+                        currentPosition.quantity, grossPnl, exitFee, fundingCost, netPnl,
+                        currentPosition.entryTime, candle.timestamp, exitReason,
+                        exitReason == ExitReason.STOP_LOSS,
+                        exitReason == ExitReason.TAKE_PROFIT
+                    )
                     position = null
                 }
             }
@@ -82,7 +90,12 @@ class BacktestEngine {
             val netPnl = grossPnl - exitFee
             balance += netPnl
             totalFees += exitFee
-            trades += TradeResult(finalPosition.side, finalPosition.entryPrice, exitPrice, finalPosition.quantity, grossPnl, exitFee, 0.0, netPnl, finalPosition.entryTime, last.timestamp)
+            trades += TradeResult(
+                finalPosition.side, finalPosition.entryPrice, exitPrice,
+                finalPosition.quantity, grossPnl, exitFee, 0.0, netPnl,
+                finalPosition.entryTime, last.timestamp, ExitReason.END_OF_DATA,
+                false, false
+            )
         }
 
         val netPnl = balance - config.initialBalance
@@ -96,7 +109,7 @@ class BacktestEngine {
             grossProfit > 0.0 -> Double.POSITIVE_INFINITY
             else -> 0.0
         }
-        return BacktestReport(config.initialBalance, balance, netPnl, roi, maxDrawdown, winRate, profitFactor, totalFees, totalFunding, trades, equityCurve)
+        return BacktestReport(config.initialBalance, balance, netPnl, roi, maxDrawdown, winRate, profitFactor, totalFees, totalFunding, trades, equityCurve, candles)
     }
 
     private fun calculatePositionSize(balance: Double, entry: Double, stop: Double, config: BacktestConfig): Double {
@@ -114,15 +127,15 @@ class BacktestEngine {
             Side.SHORT -> (position.entryPrice - exitPrice) * position.quantity
         }
 
-    private fun checkExit(position: Position, candle: Candle): Double? = when (position.side) {
+    private fun checkExit(position: Position, candle: Candle): Pair<Double, ExitReason>? = when (position.side) {
         Side.LONG -> when {
-            candle.low <= position.stopLoss -> position.stopLoss
-            candle.high >= position.takeProfit -> position.takeProfit
+            candle.low <= position.stopLoss -> position.stopLoss to ExitReason.STOP_LOSS
+            candle.high >= position.takeProfit -> position.takeProfit to ExitReason.TAKE_PROFIT
             else -> null
         }
         Side.SHORT -> when {
-            candle.high >= position.stopLoss -> position.stopLoss
-            candle.low <= position.takeProfit -> position.takeProfit
+            candle.high >= position.stopLoss -> position.stopLoss to ExitReason.STOP_LOSS
+            candle.low <= position.takeProfit -> position.takeProfit to ExitReason.TAKE_PROFIT
             else -> null
         }
     }
