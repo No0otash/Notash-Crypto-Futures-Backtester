@@ -1,6 +1,7 @@
 package com.notash.cryptobacktester.ui
 
 import com.notash.cryptobacktester.core.Candle
+import com.notash.cryptobacktester.core.ExitReason
 import com.notash.cryptobacktester.core.Side
 import com.notash.cryptobacktester.core.TradeResult
 
@@ -29,6 +30,11 @@ fun buildTradeChartData(
         buildList {
             add(TradeMarker(trade.entryTime, trade.entryPrice, MarkerType.ENTRY, trade.side, index))
             add(TradeMarker(trade.exitTime, trade.exitPrice, MarkerType.EXIT, trade.side, index))
+            when (trade.exitReason) {
+                ExitReason.STOP_LOSS -> add(TradeMarker(trade.exitTime, trade.exitPrice, MarkerType.STOP_LOSS, trade.side, index))
+                ExitReason.TAKE_PROFIT -> add(TradeMarker(trade.exitTime, trade.exitPrice, MarkerType.TAKE_PROFIT, trade.side, index))
+                else -> Unit
+            }
         }
     }
     return TradeChartData(candles = candles, markers = markers, equityCurve = equityCurve)
