@@ -20,9 +20,9 @@ class TokenomicsAnalyzerTest {
             burnPercentAnnual = 1.0
         )
         val result = TokenomicsAnalyzer.analyze(token, now)
-        assertEquals(32.0, result.circulatingPercent!!, 0.0001)
-        assertEquals(7.0, result.netSupplyChangePercent!!, 0.0001)
-        assertEquals(5.0, result.next90DayUnlockPercent, 0.0001)
+        assertEquals("circulating percent", 32.0, result.circulatingPercent!!, 0.0001)
+        assertEquals("net supply change percent", 7.0, result.netSupplyChangePercent!!, 0.0001)
+        assertEquals("next 90 day unlock percent", 5.0, result.next90DayUnlockPercent, 0.0001)
         assertTrue("expected unlock risk score 60, got ${result.unlockRiskScore}", result.unlockRiskScore == 60)
     }
 }
