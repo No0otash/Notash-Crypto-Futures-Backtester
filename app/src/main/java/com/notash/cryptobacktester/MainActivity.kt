@@ -14,6 +14,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.notash.cryptobacktester.ui.AiHubEntryScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -93,43 +94,6 @@ private fun DashboardScreen(onOpenAi: () -> Unit, bg: Color, panel: Color, cyan:
                 }
             }
             item { Text(status, color = Color.LightGray, fontSize = 12.sp) }
-        }
-    }
-}
-
-@Composable
-private fun AiHubEntryScreen(onBack: () -> Unit, bg: Color, panel: Color, cyan: Color) {
-    var question by remember { mutableStateOf("") }
-    var answer by remember { mutableStateOf("Ask Hannah anything about crypto, trading, backtesting, risk or strategy design.") }
-
-    Box(Modifier.fillMaxSize().background(bg)) {
-        LazyColumn(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            item {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Text("HANNAH // AI HUB", color = cyan, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                    TextButton(onClick = onBack) { Text("BACK") }
-                }
-            }
-            item {
-                Card(colors = CardDefaults.cardColors(containerColor = panel)) {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text("INDEPENDENT AI ASSISTANT", color = Color.White, fontWeight = FontWeight.Bold)
-                        Text("Education, strategy explanations, crypto concepts and backtest guidance.", color = Color.Gray)
-                        OutlinedTextField(question, { question = it }, label = { Text("Your question") }, modifier = Modifier.fillMaxWidth(), minLines = 4)
-                        Button(onClick = { answer = if (question.isBlank()) "Please enter a question." else "Hannah AI context prepared for: $question" }, modifier = Modifier.fillMaxWidth()) { Text("ASK HANNAH") }
-                    }
-                }
-            }
-            item {
-                Card(colors = CardDefaults.cardColors(containerColor = panel)) {
-                    Column(Modifier.padding(16.dp)) {
-                        Text("ANSWER", color = cyan, fontWeight = FontWeight.Bold)
-                        Spacer(Modifier.height(8.dp))
-                        Text(answer, color = Color.White)
-                    }
-                }
-            }
-            item { Text("AI responses are evidence-aware; missing data is not treated as a positive signal.", color = Color.Gray, fontSize = 12.sp) }
         }
     }
 }
