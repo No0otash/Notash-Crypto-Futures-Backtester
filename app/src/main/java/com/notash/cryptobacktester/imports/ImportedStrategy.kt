@@ -8,6 +8,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import java.util.Locale
@@ -29,9 +30,24 @@ object StrategyImportParser {
     }
 
     private fun parseJson(text: String): ImportedStrategy {
-        val packageData = json.decodeFromString<StrategyPackage>(text)
-        require(validate(packageData).isEmpty()) { validate(packageData).joinToString("\n") }
-        return ImportedStrategy(packageData, configFrom(json.parseToJsonElement(text).jsonObject, packageData.riskPercent))
+        val root = json.parseToJsonElement(text).jsonObject
+        fun s(key: String, fallback: String = ""): String = root[key]?.jsonPrimitive?.content ?: fallback
+        fun d(key: String, fallback: Double): Double = root[key]?.jsonPrimitive?.doubleOrNull ?: fallback
+        fun rules(key: String): List<String> = root[key]?.jsonArray?.map { it.jsonPrimitive.content } ?: emptyList()
+
+        val packageData = StrategyPackage(
+            id = s("id"),
+            name = s("name"),
+            version = s("version"),
+            symbol = s("symbol", "BTCUSDT"),
+            timeframe = s("timeframe", "5m"),
+            entryRules = rules("entryRules"),
+            exitRules = rules("exitRules"),
+            riskPercent = d("riskPercent", 1.0)
+        )
+        val errors = validate(packageData)
+        require(errors.isEmpty()) { errors.joinToString("\n") }
+        return ImportedStrategy(packageData, configFrom(root, packageData.riskPercent))
     }
 
     private fun parseCsv(text: String): ImportedStrategy {
@@ -61,20 +77,29 @@ object StrategyImportParser {
             exitRules = value("exitRules")?.split('|', ';').orEmpty(),
             riskPercent = value("riskPercent", "risk")?.toDoubleOrNull() ?: 1.0
         )
-        require(validate(p).isEmpty()) { validate(p).joinToString("\n") }
+        val errors = validate(p)
+        require(errors.isEmpty()) { errors.joinToString("\n") }
         return ImportedStrategy(p, configFromMap(map, p.riskPercent))
     }
 
     private fun configFrom(root: Map<String, JsonElement>, risk: Double): BacktestConfig {
         fun d(key: String, fallback: Double) = root[key]?.jsonPrimitive?.doubleOrNull ?: fallback
         fun i(key: String, fallback: Int) = root[key]?.jsonPrimitive?.intOrNull ?: fallback
-        return BacktestConfig(riskPercent = d("riskPercent", risk), leverage = d("leverage", 10.0), makerFee = d("makerFee", 0.0002), takerFee = d("takerFee", 0.0005), slippageBps = d("slippageBps", 2.0), fastLwma = i("fastLwma", 20), slowLwma = i("slowLwma", 50), atrPeriod = i("atrPeriod", 14), entryAtr = d("entryAtr", 0.5), stopAtr = d("stopAtr", 1.5), takeProfitAtr = d("takeProfitAtr", 3.0), useFunding = root["useFunding"]?.jsonPrimitive?.content?.toBooleanStrictOrNull() ?: true)
+        val useFunding = root["useFunding"]?.jsonPrimitive?.content?.toBooleanStrictOrNull() ?: true
+        return BacktestConfig(
+            riskPercent = d("riskPercent", risk), leverage = d("leverage", 10.0),
+            makerFee = d("makerFee", 0.0002), takerFee = d("takerFee", 0.0005),
+            slippageBps = d("slippageBps", 2.0), fastLwma = i("fastLwma", 20),
+            slowLwma = i("slowLwma", 50), atrPeriod = i("atrPeriod", 14),
+            entryAtr = d("entryAtr", 0.5), stopAtr = d("stopAtr", 1.5),
+            takeProfitAtr = d("takeProfitAtr", 3.0), useFunding = useFunding
+        )
     }
 
     private fun configFromMap(map: Map<String, String>, risk: Double): BacktestConfig {
         fun d(vararg keys: String, fallback: Double) = keys.firstNotNullOfOrNull { k -> map.entries.firstOrNull { it.key.equals(k, true) }?.value?.toDoubleOrNull() } ?: fallback
         fun i(vararg keys: String, fallback: Int) = keys.firstNotNullOfOrNull { k -> map.entries.firstOrNull { it.key.equals(k, true) }?.value?.toIntOrNull() } ?: fallback
-        return BacktestConfig(riskPercent = d("riskPercent", "risk", fallback = risk), leverage = d("leverage", fallback = 10.0), makerFee = d("makerFee", fallback = 0.0002), takerFee = d("takerFee", fallback = 0.0005), slippageBps = d("slippageBps", fallback = 2.0), fastLwma = i("fastLwma", fallback = 20), slowLwma = i("slowLwma", fallback = 50), atrPeriod = i("atrPeriod", fallback = 14), entryAtr = d("entryAtr", fallback = 0.5), stopAtr = d("stopAtr", fallback = 1.5), takeProfitAtr = d("takeProfitAtr", fallback = 3.0))
+        return BacktestConfig(riskPercent = d("riskPercent", "risk", fallback = risk), leverage = d("leverage", fallback = 10.0), makerFee = d("makerFee", fallback = 0.0002), takerFee = d("takerFee", fallback = 0.0005), slippageBps = d("slippageBps", fallback = 2.0), fastLwma = i("fastLwma", fallback = 20), slowLwma = i("slowLwma", fallback = 50), atrPeriod = i("atrPeriod", fallback = 14), entryAtr = d("entryAtr", fallback = 0.5), stopAtr = d("stopAtr", fallback = 1.5), takeProfitAtr = d("takeProfitAtr", fallback = 3.0), useFunding = map.entries.firstOrNull { it.key.equals("useFunding", true) }?.value?.toBooleanStrictOrNull() ?: true)
     }
 
     private fun validate(p: StrategyPackage): List<String> = buildList {
