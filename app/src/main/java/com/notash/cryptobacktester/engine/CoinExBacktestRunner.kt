@@ -11,7 +11,6 @@ class CoinExBacktestRunner(
     private val repository: CoinExRepository = CoinExRepository(),
     private val runner: BacktestRunner = BacktestRunner()
 ) {
-
     suspend fun run(
         market: String,
         period: String,
@@ -22,29 +21,10 @@ class CoinExBacktestRunner(
     ): BacktestReport {
         val strategy = StrategyFactory.create(strategyId)
             ?: throw IllegalArgumentException("Unknown strategy: $strategyId")
-
-        val candles = dataManager.downloadKlines(
-            market = market,
-            period = period,
-            startTime = startTime,
-            endTime = endTime
-        )
-
-        if (candles.isEmpty()) {
-            throw IllegalStateException("CoinEx returned no candle data.")
-        }
-
-        val funding = if (config.useFunding) {
-            repository.loadFundingRate(market)?.let(::listOf) ?: emptyList()
-        } else {
-            emptyList()
-        }
-
-        return runner.run(
-            strategy = strategy,
-            candles = candles,
-            funding = funding,
-            config = config
-        )
+        val candles = dataManager.downloadKlines(market, period, startTime, endTime)
+        if (candles.isEmpty()) throw IllegalStateException("CoinEx returned no candle data for $market / $period in the selected range.")
+        val funding = if (config.useFunding) repository.loadFundingRates(market) else emptyList()
+        return runner.run(strategy = strategy, candles = candles, funding = funding, config = config)
+            .copy(candles = candles)
     }
 }

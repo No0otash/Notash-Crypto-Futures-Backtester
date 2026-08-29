@@ -10,21 +10,10 @@ data class Candle(
     val value: Double = 0.0
 )
 
-data class FundingRate(
-    val timestamp: Long,
-    val rate: Double,
-    val markPrice: Double = 0.0
-)
+data class FundingRate(val timestamp: Long, val rate: Double, val markPrice: Double = 0.0)
 
-enum class Side {
-    LONG,
-    SHORT
-}
-
-enum class OrderType {
-    MARKET,
-    LIMIT
-}
+enum class Side { LONG, SHORT }
+enum class OrderType { MARKET, LIMIT }
 
 data class Signal(
     val side: Side,
@@ -59,29 +48,17 @@ data class TradeResult(
 
 data class BacktestConfig(
     val initialBalance: Double = 1000.0,
-
     val riskPercent: Double = 1.0,
-
     val leverage: Double = 10.0,
-
     val makerFee: Double = 0.0002,
-
     val takerFee: Double = 0.0005,
-
     val slippageBps: Double = 2.0,
-
     val fastLwma: Int = 20,
-
     val slowLwma: Int = 50,
-
     val atrPeriod: Int = 14,
-
     val entryAtr: Double = 0.5,
-
     val stopAtr: Double = 1.5,
-
     val takeProfitAtr: Double = 3.0,
-
     val useFunding: Boolean = true
 )
 
@@ -96,5 +73,14 @@ data class BacktestReport(
     val totalFees: Double,
     val totalFunding: Double,
     val trades: List<TradeResult>,
-    val equityCurve: List<Double>
+    val equityCurve: List<Double>,
+    val candles: List<Candle> = emptyList()
+)
+
+data class MarketTicker(
+    val market: String,
+    val last: Double,
+    val change24h: Double,
+    val volume24h: Double,
+    val value24h: Double
 )

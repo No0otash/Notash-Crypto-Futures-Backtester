@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "HannahStrategyPackage",
+  "type": "object",
+  "required": ["id", "name", "version", "symbol", "timeframe", "direction", "indicators", "entryRules", "exitRules", "risk"],
+  "properties": {
+    "id": {"type": "string", "minLength": 1},
+    "name": {"type": "string", "minLength": 1},
+    "version": {"type": "integer", "minimum": 1},
+    "symbol": {"type": "string", "minLength": 1},
+    "timeframe": {"type": "string", "minLength": 1},
+    "direction": {"type": "string", "enum": ["LONG", "SHORT", "BOTH"]},
+    "indicators": {"type": "array", "items": {"type": "object", "required": ["name"], "properties": {"name": {"type": "string"}, "period": {"type": ["integer", "null"], "minimum": 1}, "parameters": {"type": "object", "additionalProperties": {"type": "number"}}}}},
+    "entryRules": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+    "exitRules": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+    "risk": {"type": "object", "required": ["riskPercent", "leverage"], "properties": {"riskPercent": {"type": "number", "exclusiveMinimum": 0, "maximum": 10}, "leverage": {"type": "number", "exclusiveMinimum": 0, "maximum": 100}, "stopLossAtr": {"type": ["number", "null"]}, "takeProfitAtr": {"type": ["number", "null"]}}},
+    "filters": {"type": "array", "items": {"type": "string"}},
+    "explanationFa": {"type": "string"},
+    "explanationEn": {"type": "string"}
+  },
+  "additionalProperties": false
+}
