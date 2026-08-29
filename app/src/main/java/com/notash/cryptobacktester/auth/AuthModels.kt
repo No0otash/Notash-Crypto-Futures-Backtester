@@ -19,5 +19,11 @@ object AuthValidation {
     fun isValidCaptcha(answer: String, expected: String): Boolean =
         answer.trim().equals(expected.trim(), ignoreCase = true)
 
+    /** Backward-compatible test/API name retained for the auth workflow. */
+    fun isCaptchaValid(answer: String, expected: String): Boolean = isValidCaptcha(answer, expected)
+
     fun isOtpFormatValid(code: String): Boolean = code.trim().matches(Regex("^\\d{6}$"))
+
+    /** Backward-compatible test/API name retained for the auth workflow. */
+    fun isValidOtp(code: String): Boolean = isOtpFormatValid(code)
 }
