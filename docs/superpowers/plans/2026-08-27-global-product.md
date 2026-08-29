@@ -8,8 +8,6 @@
 
 **Tech Stack:** Kotlin, Android, Jetpack Compose, Kotlin Serialization, Coroutines, CoinEx APIs, JUnit, GitHub Actions.
 
-**Spec:** Product requirements agreed in conversation.
-
 ## Global Constraints
 
 - Do not remove existing user-facing capabilities.
@@ -17,6 +15,26 @@
 - Strategy logic must be the source of truth for chart overlays and signals.
 - Every milestone must compile and pass tests before the next milestone.
 - Existing branch structure and working UI should be preserved unless a change is required for correctness.
+- APK size is currently out of scope; prioritize functionality, stability and UX.
+
+## UX Requirements Added From Reference Screenshots
+
+### Main application navigation
+
+- Remove the redundant/useless top header area highlighted in the reference screenshot; it consumes vertical space and provides no useful action.
+- Keep one clear, intentional app header/navigation hierarchy instead of duplicated branding bars.
+- The main navigation must remain compact, professional and usable on modern Android phones.
+- Menu and Settings must be redesigned as polished, functional destinations rather than placeholder panels.
+- Settings should expose useful application controls without clutter, with clear grouping, icons, descriptions and safe defaults.
+- Preserve all existing navigation destinations and capabilities while improving their hierarchy.
+
+### Login screen
+
+- Login must closely follow the supplied CoinEx-style reference: clean light background, branded header area, large rounded form surface, account/email/phone field, password field with visibility toggle, validation messages, prominent login action, alternative Google login action and password-recovery entry.
+- Support email/phone account input as shown in the reference.
+- Preserve the language switch and make Persian/English behavior consistent with the rest of the app.
+- Validation must be clear and localized; disabled login state must be visually obvious.
+- Do not copy third-party branding/assets beyond what is necessary for the intended interaction pattern; use Hannah/Notash branding for the actual product.
 
 ## Milestones
 
@@ -27,12 +45,17 @@
 - [ ] Complete fees, funding, slippage, liquidation, risk and reporting calculations.
 - [ ] Complete AI strategy generation and trade analysis with real inputs/outputs.
 - [ ] Build token/project intelligence: roadmap, team, investors, utility, tokenomics, unlocks, vesting and burns.
+- [ ] Build Growth Scanner, Pump/Dump detection, Whale/Smart Money and early-growth candidate ranking.
+- [ ] Complete the independent AI Hub for education, Q&A, coin analysis and strategy/trade assistance.
+- [ ] Implement the refined global navigation, Settings and login UX from the approved references.
 - [ ] Harden security, localization, performance, export/share and production readiness.
 
-## Current first task
+## Preservation Requirements
 
-Consolidate the strategy layer carefully. `core.Models` is the canonical model source for candles/trades; `data.StrategyPackage` is the serializable strategy package. Avoid introducing another `StrategyPackage` in `engine`. Preserve any public API needed by existing callers through adapters rather than deleting functionality.
+- Keep the existing strategy manager and robot/strategy import capability.
+- Existing backtest, chart, trade report, CoinEx and other exchange integrations must remain available.
+- New intelligence features must extend existing models/services rather than silently replacing working functionality.
 
-### Verification
+## Verification
 
 After each code change: run `testDebugUnitTest`; only after green, run `assembleDebug`. Record the CI run and artifact before moving to the next milestone.
