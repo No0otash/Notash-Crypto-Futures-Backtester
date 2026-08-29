@@ -33,6 +33,8 @@ data class Position(
     val entryTime: Long
 )
 
+enum class ExitReason { STOP_LOSS, TAKE_PROFIT, SIGNAL, END_OF_DATA }
+
 data class TradeResult(
     val side: Side,
     val entryPrice: Double,
@@ -43,7 +45,10 @@ data class TradeResult(
     val funding: Double,
     val netPnl: Double,
     val entryTime: Long,
-    val exitTime: Long
+    val exitTime: Long,
+    val exitReason: ExitReason = ExitReason.END_OF_DATA,
+    val stopLossTouched: Boolean = false,
+    val takeProfitTouched: Boolean = false
 )
 
 data class BacktestConfig(
