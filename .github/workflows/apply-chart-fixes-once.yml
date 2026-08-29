@@ -1,0 +1,195 @@
+name: Apply Professional Chart Fixes Once
+
+on:
+  push:
+    branches: [ 'global-product-v4' ]
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-verify:
+    if: github.event.head_commit.message != 'chore: apply professional chart fixes'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Patch chart and trade model
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          import re
+
+          root = Path('.')
+
+          models = root/'app/src/main/java/com/notash/cryptobacktester/core/Models.kt'
+          s = models.read_text()
+          old = '    val stopLossTouched: Boolean = false,\n    val takeProfitTouched: Boolean = false\n)'
+          new = '    val stopLossTouched: Boolean = false,\n    val takeProfitTouched: Boolean = false,\n    val stopLoss: Double = Double.NaN,\n    val takeProfit: Double = Double.NaN\n)'
+          assert old in s
+          models.write_text(s.replace(old,new,1))
+
+          engine = root/'app/src/main/java/com/notash/cryptobacktester/engine/BacktestEngine.kt'
+          s = engine.read_text()
+          old = '''                        currentPosition.entryTime, candle.timestamp, exitReason,\n                        exitReason == ExitReason.STOP_LOSS,\n                        exitReason == ExitReason.TAKE_PROFIT\n                    )'''
+          new = '''                        currentPosition.entryTime, candle.timestamp, exitReason,\n                        exitReason == ExitReason.STOP_LOSS,\n                        exitReason == ExitReason.TAKE_PROFIT,\n                        currentPosition.stopLoss, currentPosition.takeProfit\n                    )'''
+          assert old in s
+          s = s.replace(old,new,1)
+          old = '''                finalPosition.entryTime, last.timestamp, ExitReason.END_OF_DATA,\n                false, false\n            )'''
+          new = '''                finalPosition.entryTime, last.timestamp, ExitReason.END_OF_DATA,\n                false, false, finalPosition.stopLoss, finalPosition.takeProfit\n            )'''
+          assert old in s
+          engine.write_text(s.replace(old,new,1))
+
+          pt = root/'app/src/main/java/com/notash/cryptobacktester/ui/ProfessionalTerminal.kt'
+          s = pt.read_text()
+          s = s.replace('import androidx.compose.foundation.gestures.detectDragGestures\n', 'import androidx.compose.foundation.gestures.detectDragGestures\nimport androidx.compose.foundation.gestures.detectTapGestures\n')
+          s = s.replace('import androidx.compose.ui.graphics.Color\n', 'import androidx.compose.ui.graphics.Color\nimport androidx.compose.ui.graphics.drawscope.DrawScope\nimport androidx.compose.ui.graphics.drawscope.Stroke\nimport androidx.compose.ui.graphics.drawscope.Fill\nimport androidx.compose.ui.graphics.drawIntoCanvas\nimport androidx.compose.ui.graphics.toArgb\n')
+          s = s.replace('import kotlin.math.min\n', 'import kotlin.math.min\nimport java.text.SimpleDateFormat\nimport java.util.Date\nimport java.util.Locale\nimport android.graphics.Paint\nimport android.graphics.Typeface\n')
+          s = s.replace('import androidx.compose.ui.graphics.drawscope.Stroke\nimport androidx.compose.ui.graphics.drawscope.Fill\n', 'import androidx.compose.ui.graphics.drawscope.Stroke\n')
+
+          replacement = r'''@Composable private fun ChartPage(r: BacktestReport?, fa: Boolean) {
+    LazyColumn(Modifier.fillMaxSize().padding(horizontal = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        item { HeaderText(if (fa) "نمودار حرفه‌ای" else "PRO CHART", "OHLC • ${r?.candles?.size ?: 0} candles", if (fa) "کندل واقعی + LONG/SHORT + SL/TP + PnL" else "Real candles • LONG/SHORT • SL/TP • PnL") }
+        item { CardBox { if (r?.candles?.isNotEmpty() == true) CandlestickChart(r.candles, r.trades, fa) else Empty(if (fa) "بعد از اجرای بک‌تست کندل‌ها نمایش داده می‌شوند" else "Run a backtest to load real candles", 320) } }
+        item { Legend(fa) }
+        item { CardBox { Title(if (fa) "راهنمای نمودار" else "CHART GUIDE"); Text(if (fa) "سبز/قرمز = کندل صعودی/نزولی • LONG/SHORT = جهت ورود • خط قرمز = SL • خط سبز = TP • دایره توخالی = خروج • لمس نمودار = جزئیات کندل/معامله" else "Green/red = bullish/bearish • LONG/SHORT = entry direction • red line = SL • green line = TP • hollow circle = exit • tap the chart for candle/trade details", color = H.muted, fontSize = 11.sp) } }
+    }
+}
+
+@Composable private fun CandlestickChart(candles: List<Candle>, trades: List<com.notash.cryptobacktester.core.TradeResult>, fa: Boolean) {
+    var visible by remember(candles.size) { mutableIntStateOf(min(80, candles.size)) }
+    var start by remember(candles.size) { mutableIntStateOf(max(0, candles.size - visible)) }
+    var selected by remember(candles.size) { mutableIntStateOf(-1) }
+    val shownStart = start.coerceIn(0, max(0, candles.size - 1))
+    val shownEnd = min(candles.size, shownStart + visible.coerceAtLeast(5))
+    val shown = candles.subList(shownStart, shownEnd)
+    val selectedCandle = shown.getOrNull(selected)
+
+    Column {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Text(if (fa) "کندل‌ها" else "CANDLES", color = H.muted, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+            Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                TextButton(onClick = { visible = min(candles.size, visible + 15); start = max(0, candles.size - visible) }) { Text("+", color = H.cyan) }
+                TextButton(onClick = { visible = max(25, visible - 15); start = max(0, candles.size - visible) }) { Text("−", color = H.cyan) }
+                TextButton(onClick = { start = max(0, candles.size - visible) }) { Text("LAST", color = H.cyan, fontSize = 9.sp) }
+            }
+        }
+        Box(Modifier.fillMaxWidth().height(370.dp).clip(RoundedCornerShape(12.dp)).background(H.panel2)
+            .pointerInput(candles.size, visible) {
+                detectDragGestures { _, drag ->
+                    val step = (-drag.x / 12f).toInt()
+                    start = (start + step).coerceIn(0, max(0, candles.size - visible))
+                }
+            }
+            .pointerInput(candles.size, visible) {
+                detectTapGestures { tap ->
+                    val plotWidth = max(1f, 0f + 1f)
+                    val gap = size.width / shown.size.coerceAtLeast(1)
+                    selected = ((tap.x / gap).toInt()).coerceIn(0, shown.lastIndex.coerceAtLeast(0))
+                }
+            }) {
+            Canvas(Modifier.fillMaxSize().padding(start = 8.dp, top = 8.dp, bottom = 8.dp, end = 8.dp)) {
+                if (shown.size < 2) return@Canvas
+                val priceRight = 76f
+                val plotBottom = size.height - 26f
+                val plotWidth = max(1f, size.width - priceRight)
+                val lo = shown.minOf { it.low }
+                val hi = shown.maxOf { it.high }
+                val range = (hi - lo).takeIf { it > 0.0 } ?: 1.0
+                val gap = plotWidth / shown.size
+                val body = max(3f, gap * .58f)
+                fun y(price: Double) = plotBottom - ((price - lo) / range).toFloat() * (plotBottom - 4f)
+                fun x(index: Int) = index * gap + gap / 2f
+                fun paint(color: Color, textSize: Float = 22f, bold: Boolean = false) = Paint().apply { this.color = color.toArgb(); this.textSize = textSize; isAntiAlias = true; typeface = if (bold) Typeface.DEFAULT_BOLD else Typeface.DEFAULT }
+
+                // Professional price grid + scale.
+                for (g in 0..4) {
+                    val price = hi - (hi - lo) * g / 4.0
+                    val yy = y(price)
+                    drawLine(H.muted.copy(alpha = .16f), Offset(0f, yy), Offset(plotWidth, yy), 1f)
+                    drawIntoCanvas { it.nativeCanvas.drawText(String.format(Locale.US, "%.4f", price), plotWidth + 6f, yy + 4f, paint(H.muted, 18f)) }
+                }
+
+                // Time scale.
+                val timeFormat = SimpleDateFormat("MM/dd HH:mm", Locale.US)
+                val timeSteps = 4
+                for (g in 0..timeSteps) {
+                    val idx = ((shown.lastIndex * g) / timeSteps).coerceIn(0, shown.lastIndex)
+                    drawIntoCanvas { it.nativeCanvas.drawText(timeFormat.format(Date(shown[idx].timestamp)), x(idx) - 28f, size.height - 5f, paint(H.muted, 16f)) }
+                }
+
+                shown.forEachIndexed { i, c ->
+                    val xx = x(i)
+                    val up = c.close >= c.open
+                    val color = if (up) H.green else H.red
+                    drawLine(color, Offset(xx, y(c.high)), Offset(xx, y(c.low)), 1.5f)
+                    val top = y(max(c.open, c.close)); val bottom = y(min(c.open, c.close))
+                    drawRect(color, Offset(xx - body / 2f, top), Size(body, max(2f, bottom - top)))
+                }
+
+                trades.forEachIndexed { index, t ->
+                    val ei = nearestIndex(shown, t.entryTime); val xi = nearestIndex(shown, t.exitTime)
+                    if (ei >= 0 && xi >= 0) {
+                        val ex = x(ei); val xx = x(xi); val ey = y(t.entryPrice); val xy = y(t.exitPrice)
+                        val sideColor = if (t.side == Side.LONG) H.green else H.red
+                        drawCircle(sideColor, 7f, Offset(ex, ey)); drawCircle(H.panel2, 3f, Offset(ex, ey))
+                        drawLine(sideColor.copy(alpha = .75f), Offset(ex, ey), Offset(xx, xy), 2f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 6f)))
+                        drawCircle(H.text, 7f, Offset(xx, xy), style = Stroke(2f))
+                        val sl = t.stopLoss; val tp = t.takeProfit
+                        if (!sl.isNaN() && !tp.isNaN()) {
+                            val slY = y(sl); val tpY = y(tp)
+                            drawLine(H.red.copy(alpha = .9f), Offset(ex, slY), Offset(xx, slY), 2f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(5f, 5f)))
+                            drawLine(H.green.copy(alpha = .9f), Offset(ex, tpY), Offset(xx, tpY), 2f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(5f, 5f)))
+                            drawIntoCanvas { c ->
+                                c.nativeCanvas.drawText("SL ${String.format(Locale.US, "%.4f", sl)}", plotWidth - 70f, slY - 4f, paint(H.red, 17f, true))
+                                c.nativeCanvas.drawText("TP ${String.format(Locale.US, "%.4f", tp)}", plotWidth - 70f, tpY - 4f, paint(H.green, 17f, true))
+                            }
+                        }
+                        val midX = (ex + xx) / 2f
+                        drawIntoCanvas { c -> c.nativeCanvas.drawText("${if (t.netPnl >= 0) "+" else ""}${String.format(Locale.US, "%.2f", t.netPnl)}", midX, (ey + xy) / 2f - 6f, paint(if (t.netPnl >= 0) H.green else H.red, 18f, true)) }
+                        val exitLabel = t.exitReason.name.replace('_', ' ')
+                        drawIntoCanvas { c -> c.nativeCanvas.drawText("#${index + 1} ${t.side.name} • $exitLabel", min(plotWidth - 150f, xx + 8f), xy + 20f, paint(H.text, 15f, true)) }
+                    }
+                }
+
+                if (selected >= 0 && selected < shown.size) {
+                    val xx = x(selected); drawLine(H.cyan.copy(alpha = .55f), Offset(xx, 0f), Offset(xx, plotBottom), 1.5f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(4f, 4f)))
+                }
+            }
+        }
+        selectedCandle?.let { c ->
+            CardBox {
+                Title(if (fa) "جزئیات کندل انتخاب‌شده" else "SELECTED CANDLE")
+                Text("O ${String.format(Locale.US, "%.4f", c.open)}   H ${String.format(Locale.US, "%.4f", c.high)}   L ${String.format(Locale.US, "%.4f", c.low)}   C ${String.format(Locale.US, "%.4f", c.close)}", color = H.text, fontSize = 10.sp)
+                Text("Volume ${String.format(Locale.US, "%.4f", c.volume)}", color = H.muted, fontSize = 9.sp)
+            }
+        }
+        Text(if (fa) "Drag = حرکت • +/− = زوم • لمس = جزئیات • SL/TP برای هر پوزیشن رسم شده‌اند" else "Drag = pan • +/− = zoom • tap = details • SL/TP levels are drawn for every position", color = H.muted, fontSize = 9.sp, modifier = Modifier.padding(top = 5.dp))
+    }
+}
+
+'''
+          pattern = r'@Composable private fun ChartPage\(r: BacktestReport\?, fa: Boolean\) \{.*?\nprivate fun nearestIndex'
+          s2, n = re.subn(pattern, replacement + 'private fun nearestIndex', s, count=1, flags=re.S)
+          assert n == 1, 'Chart section not found'
+          pt.write_text(s2)
+          PY
+      - name: Verify unit tests and APK
+        run: |
+          gradle testDebugUnitTest
+          gradle assembleDebug
+      - name: Commit verified changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm -f .github/workflows/apply-chart-fixes-once.yml
+          git add app/src/main/java/com/notash/cryptobacktester/core/Models.kt app/src/main/java/com/notash/cryptobacktester/engine/BacktestEngine.kt app/src/main/java/com/notash/cryptobacktester/ui/ProfessionalTerminal.kt .github/workflows/apply-chart-fixes-once.yml
+          git commit -m "chore: apply professional chart fixes"
+          git push origin global-product-v4
