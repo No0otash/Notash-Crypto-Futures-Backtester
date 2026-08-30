@@ -16,8 +16,16 @@ import com.notash.cryptobacktester.export.BacktestExportManager
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-
-data class StrategyPackage(val id: String, val name: String, val version: String, val entryRules: String, val exitRules: String, val riskRules: String)
+// Keep the StrategyPackage definition in this UI module so all Strategy Manager
+// fields used by the composable are resolved against the same model.
+data class StrategyPackage(
+    val id: String,
+    val name: String,
+    val version: String,
+    val entryRules: String,
+    val exitRules: String,
+    val riskRules: String
+)
 
 @Composable
 fun ProfessionalTerminal() {
@@ -112,7 +120,11 @@ private val supportedTimeframes = listOf("1m", "3m", "5m", "15m", "30m", "1h", "
 }
 
 @Composable private fun StrategyPage(fa: Boolean, current: StrategyPackage, onChange: (StrategyPackage) -> Unit) = Page(if (fa) "مدیریت استراتژی" else "Strategy Manager") {
-    var name by remember(current.id) { mutableStateOf(current.name) }; var version by remember(current.id) { mutableStateOf(current.version) }; var entry by remember(current.id) { mutableStateOf(current.entryRules) }; var exit by remember(current.id) { mutableStateOf(current.exitRules) }; var risk by remember(current.id) { mutableStateOf(current.riskRules) }
+    var name: String by remember(current.id) { mutableStateOf(current.name) }
+    var version: String by remember(current.id) { mutableStateOf(current.version) }
+    var entry: String by remember(current.id) { mutableStateOf(current.entryRules) }
+    var exit: String by remember(current.id) { mutableStateOf(current.exitRules) }
+    var risk: String by remember(current.id) { mutableStateOf(current.riskRules) }
     OutlinedTextField(name, { name = it }, label = { Text(if (fa) "نام Strategy" else "Strategy name") }, modifier = Modifier.fillMaxWidth()); OutlinedTextField(version, { version = it }, label = { Text("Version") }, modifier = Modifier.fillMaxWidth()); OutlinedTextField(entry, { entry = it }, label = { Text(if (fa) "قوانین ورود" else "Entry rules") }, modifier = Modifier.fillMaxWidth()); OutlinedTextField(exit, { exit = it }, label = { Text(if (fa) "قوانین خروج" else "Exit rules") }, modifier = Modifier.fillMaxWidth()); OutlinedTextField(risk, { risk = it }, label = { Text(if (fa) "قوانین ریسک" else "Risk rules") }, modifier = Modifier.fillMaxWidth())
     Button({ onChange(StrategyPackage(current.id, name.trim().ifBlank { current.name }, version.trim().ifBlank { current.version }, entry.trim(), exit.trim(), risk.trim())) }) { Text(if (fa) "ذخیره و فعال‌سازی" else "Save & Activate") }; OutlinedButton({}) { Text("Import Bot / Strategy (JSON/ZIP)") }
 }
