@@ -21,9 +21,7 @@ data class WhaleTransfer(
 )
 
 enum class WhaleDirection { INFLOW, OUTFLOW, WALLET_TO_WALLET, UNKNOWN }
-
 enum class SmartMoneyBias { ACCUMULATION, DISTRIBUTION, NEUTRAL, UNKNOWN }
-
 enum class WhaleSeverity { LOW, MEDIUM, HIGH, EXTREME }
 
 data class WhaleActivity(
@@ -42,7 +40,6 @@ data class WhaleActivity(
     val message: String
 )
 
-/** Aggregates real provider records and intentionally reports unavailable when no records exist. */
 class WhaleSmartMoneyAnalyzer(
     private val minimumUsdValue: Double = 1_000_000.0,
     private val highUsdValue: Double = 10_000_000.0,
@@ -55,23 +52,10 @@ class WhaleSmartMoneyAnalyzer(
                 it.usdValue >= minimumUsdValue
         }
         if (valid.isEmpty()) {
-            return WhaleActivity(
-                asset = asset,
-                fromTimestamp = from,
-                toTimestamp = until,
-                transfers = emptyList(),
-                totalUsdValue = 0.0,
-                inflowUsd = 0.0,
-                outflowUsd = 0.0,
-                score = 0.0,
-                severity = WhaleSeverity.LOW,
-                bias = SmartMoneyBias.UNKNOWN,
-                alert = false,
-                dataAvailable = false,
-                message = "On-chain whale data is unavailable for this asset/time window"
-            )
+            return WhaleActivity(asset, from, until, emptyList(), 0.0, 0.0, 0.0, 0.0,
+                WhaleSeverity.LOW, SmartMoneyBias.UNKNOWN, false, false,
+                "On-chain whale data is unavailable for this asset/time window")
         }
-
         val inflow = valid.filter { it.direction == WhaleDirection.INFLOW }.sumOf { it.usdValue }
         val outflow = valid.filter { it.direction == WhaleDirection.OUTFLOW }.sumOf { it.usdValue }
         val total = valid.sumOf { it.usdValue }
@@ -87,21 +71,8 @@ class WhaleSmartMoneyAnalyzer(
             outflow > inflow * 1.25 -> SmartMoneyBias.DISTRIBUTION
             else -> SmartMoneyBias.NEUTRAL
         }
-
-        return WhaleActivity(
-            asset = asset,
-            fromTimestamp = from,
-            toTimestamp = until,
-            transfers = valid,
-            totalUsdValue = total,
-            inflowUsd = inflow,
-            outflowUsd = outflow,
-            score = score,
-            severity = severity,
-            bias = bias,
-            alert = severity >= WhaleSeverity.HIGH,
-            dataAvailable = true,
-            message = "Real provider data aggregated; bias is directional, not a prediction"
-        )
+        return WhaleActivity(asset, from, until, valid, total, inflow, outflow, score, severity, bias,
+            severity >= WhaleSeverity.HIGH, true,
+            "Real provider data aggregated; bias is directional, not a prediction")
     }
 }
