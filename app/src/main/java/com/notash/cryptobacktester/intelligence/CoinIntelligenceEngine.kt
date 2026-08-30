@@ -3,7 +3,6 @@ package com.notash.cryptobacktester.intelligence
 import com.notash.cryptobacktester.core.Candle
 import kotlin.math.abs
 
-/** Aggregates independent coin signals into one explainable, bounded intelligence report. */
 data class CoinIntelligenceInput(
     val snapshot: MemeCoinSnapshot,
     val candles: List<Candle>,
@@ -32,27 +31,20 @@ data class CoinIntelligenceReport(
     val summary: String
 )
 
-class CoinIntelligenceEngine(
-    private val memeScanner: MemeShitcoinScanner = MemeShitcoinScanner()
-) {
+class CoinIntelligenceEngine(private val memeScanner: MemeShitcoinScanner = MemeShitcoinScanner()) {
     fun analyze(input: CoinIntelligenceInput): CoinIntelligenceReport {
         val meme = memeScanner.scan(input.snapshot, input.candles)
         val marketScore = marketScore(input.candles)
-        val whaleScore = whaleScore(input.whaleActivity)
-        val projectScore = input.projectQualityScore?.coerceIn(0.0, 100.0)
-        val tokenomicsScore = input.tokenomicsScore?.coerceIn(0.0, 100.0)
-
         val components = mutableListOf(
             IntelligenceComponent("MARKET", marketScore, 0.30, "Price movement, volatility and supplied candles"),
             IntelligenceComponent("MEME_RISK", 100.0 - meme.riskScore, 0.25, "Liquidity, age, concentration, tax and market-behaviour risk"),
             IntelligenceComponent("MOMENTUM", meme.opportunityScore, 0.15, "Recent price/volume opportunity without predicting direction")
         )
-        if (input.whaleActivity != null) {
-            components += IntelligenceComponent("WHALE", 100.0 - input.whaleActivity.score, 0.15, "Whale activity risk from supplied on-chain provider data")
+        input.whaleActivity?.let {
+            components += IntelligenceComponent("WHALE", 100.0 - it.score.coerceIn(0.0, 100.0), 0.15, "Whale activity risk from supplied provider data")
         }
-        if (projectScore != null) components += IntelligenceComponent("PROJECT", projectScore, 0.075, "Supplied project-quality score")
-        if (tokenomicsScore != null) components += IntelligenceComponent("TOKENOMICS", tokenomicsScore, 0.075, "Supplied tokenomics score")
-
+        input.projectQualityScore?.coerceIn(0.0, 100.0)?.let { components += IntelligenceComponent("PROJECT", it, 0.075, "Supplied project-quality score") }
+        input.tokenomicsScore?.coerceIn(0.0, 100.0)?.let { components += IntelligenceComponent("TOKENOMICS", it, 0.075, "Supplied tokenomics score") }
         val weightSum = components.sumOf { it.weight }
         val overall = if (weightSum > 0.0) components.sumOf { it.score * it.weight } / weightSum else 0.0
         val risk = (meme.riskScore * 0.65 + (input.whaleActivity?.score ?: 0.0) * 0.35).coerceIn(0.0, 100.0)
@@ -70,8 +62,8 @@ class CoinIntelligenceEngine(
             else -> "Weak supplied-data profile; elevated caution is appropriate"
         }
         return CoinIntelligenceReport(input.snapshot.symbol, input.snapshot.market, overall, risk,
-            meme.opportunityScore, confidence, components, warnings, meme.dataComplete &&
-                (input.whaleActivity == null || input.whaleActivity.dataAvailable), summary)
+            meme.opportunityScore, confidence, components, warnings,
+            meme.dataComplete && (input.whaleActivity == null || input.whaleActivity.dataAvailable), summary)
     }
 
     private fun marketScore(candles: List<Candle>): Double {
@@ -84,8 +76,6 @@ class CoinIntelligenceEngine(
         val volatility = ranges.average().takeIf { it.isFinite() } ?: 0.0
         return (50.0 + change.coerceIn(-50.0, 50.0) - volatility.coerceIn(0.0, 30.0)).coerceIn(0.0, 100.0)
     }
-
-    private fun whaleScore(activity: WhaleActivity?): Double = activity?.score?.coerceIn(0.0, 100.0) ?: 0.0
 
     private fun confidence(input: CoinIntelligenceInput, meme: MemeScanResult): Double {
         var score = 0.0
