@@ -8,7 +8,11 @@ data class CoinIntelligenceInput(
     val candles: List<Candle>,
     val whaleActivity: WhaleActivity? = null,
     val projectQualityScore: Double? = null,
-    val tokenomicsScore: Double? = null
+    val tokenomicsScore: Double? = null,
+    val research: ResearchSummary? = null,
+    val roadmap: RoadmapAnalysis? = null,
+    val onChain: OnChainAnalysis? = null,
+    val unlocks: UnlockAnalysis? = null
 )
 
 data class IntelligenceComponent(
@@ -36,23 +40,28 @@ class CoinIntelligenceEngine(private val memeScanner: MemeShitcoinScanner = Meme
         val meme = memeScanner.scan(input.snapshot, input.candles)
         val marketScore = marketScore(input.candles)
         val components = mutableListOf(
-            IntelligenceComponent("MARKET", marketScore, 0.30, "Price movement, volatility and supplied candles"),
-            IntelligenceComponent("MEME_RISK", 100.0 - meme.riskScore, 0.25, "Liquidity, age, concentration, tax and market-behaviour risk"),
-            IntelligenceComponent("MOMENTUM", meme.opportunityScore, 0.15, "Recent price/volume opportunity without predicting direction")
+            IntelligenceComponent("MARKET", marketScore, 0.25, "Price movement, volatility and supplied candles"),
+            IntelligenceComponent("MEME_RISK", 100.0 - meme.riskScore, 0.20, "Liquidity, age, concentration, tax and market-behaviour risk"),
+            IntelligenceComponent("MOMENTUM", meme.opportunityScore, 0.10, "Recent price/volume opportunity without predicting direction")
         )
-        input.whaleActivity?.let {
-            components += IntelligenceComponent("WHALE", 100.0 - it.score.coerceIn(0.0, 100.0), 0.15, "Whale activity risk from supplied provider data")
-        }
-        input.projectQualityScore?.coerceIn(0.0, 100.0)?.let { components += IntelligenceComponent("PROJECT", it, 0.075, "Supplied project-quality score") }
+        input.whaleActivity?.let { components += IntelligenceComponent("WHALE", 100.0 - it.score.coerceIn(0.0, 100.0), 0.10, "Whale activity risk from supplied provider data") }
+        input.projectQualityScore?.coerceIn(0.0, 100.0)?.let { components += IntelligenceComponent("PROJECT", it, 0.10, "Supplied project-quality score") }
+        input.research?.let { components += IntelligenceComponent("RESEARCH", it.overallScore, 0.10, "Project/product/development research") }
         input.tokenomicsScore?.coerceIn(0.0, 100.0)?.let { components += IntelligenceComponent("TOKENOMICS", it, 0.075, "Supplied tokenomics score") }
+        input.roadmap?.let { components += IntelligenceComponent("ROADMAP", it.progressScore, 0.025, "Milestone progress and roadmap credibility") }
+        input.onChain?.let { components += IntelligenceComponent("ONCHAIN", it.overallScore, 0.025, "Holder distribution and concentration") }
+        input.unlocks?.let { components += IntelligenceComponent("UNLOCKS", it.overallScore, 0.025, "Unlock, emission and burn pressure") }
         val weightSum = components.sumOf { it.weight }
         val overall = if (weightSum > 0.0) components.sumOf { it.score * it.weight } / weightSum else 0.0
-        val risk = (meme.riskScore * 0.65 + (input.whaleActivity?.score ?: 0.0) * 0.35).coerceIn(0.0, 100.0)
+        val risk = (meme.riskScore * 0.50 + (input.whaleActivity?.score ?: 0.0) * 0.20 + (100.0-(input.tokenomicsScore ?: 50.0))*0.15 + (input.onChain?.concentrationRisk ?: 50.0)*0.15).coerceIn(0.0, 100.0)
         val confidence = confidence(input, meme).coerceIn(0.0, 100.0)
         val warnings = buildList {
             addAll(meme.flags)
             if (input.whaleActivity?.dataAvailable == false) add("WHALE_DATA_UNAVAILABLE")
             if (!meme.dataComplete) add("INCOMPLETE_TOKEN_DATA")
+            if (input.research == null) add("PROJECT_RESEARCH_UNAVAILABLE")
+            if (input.onChain == null) add("ONCHAIN_DATA_UNAVAILABLE")
+            if (input.tokenomicsScore == null && input.research == null) add("TOKENOMICS_DATA_UNAVAILABLE")
         }.distinct()
         val summary = when {
             confidence < 50.0 -> "Low-confidence intelligence: more verified data is required"
@@ -79,12 +88,15 @@ class CoinIntelligenceEngine(private val memeScanner: MemeShitcoinScanner = Meme
 
     private fun confidence(input: CoinIntelligenceInput, meme: MemeScanResult): Double {
         var score = 0.0
-        if (input.candles.size >= 20) score += 35.0
-        if (meme.liquidityUsd > 0.0) score += 20.0
-        if (meme.marketCapUsd > 0.0) score += 20.0
+        if (input.candles.size >= 20) score += 30.0
+        if (meme.liquidityUsd > 0.0) score += 15.0
+        if (meme.marketCapUsd > 0.0) score += 15.0
         if (input.snapshot.contractVerified != null) score += 10.0
         if (input.snapshot.holderConcentrationPercent != null) score += 10.0
         if (input.whaleActivity?.dataAvailable == true) score += 5.0
+        if (input.research != null) score += 5.0
+        if (input.tokenomicsScore != null) score += 5.0
+        if (input.onChain != null) score += 5.0
         return score
     }
 }
