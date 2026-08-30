@@ -16,15 +16,17 @@ data class FundingRate(
     val markPrice: Double = 0.0
 )
 
-enum class Side {
-    LONG,
-    SHORT
-}
+data class MarketTicker(
+    val market: String,
+    val last: Double,
+    val changeRate: Double,
+    val volume: Double = 0.0,
+    val markPrice: Double = 0.0,
+    val timestamp: Long = System.currentTimeMillis()
+)
 
-enum class OrderType {
-    MARKET,
-    LIMIT
-}
+enum class Side { LONG, SHORT }
+enum class OrderType { MARKET, LIMIT }
 
 data class Signal(
     val side: Side,
