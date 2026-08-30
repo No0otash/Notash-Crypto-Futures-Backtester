@@ -8,8 +8,15 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.notash.cryptobacktester.engine.LiveBacktestState
-import com.notash.cryptobacktester.engine.StrategyPackage
-import kotlin.math.max
+
+data class StrategyPackage(
+    val id: String,
+    val name: String,
+    val version: String,
+    val entryRules: String,
+    val exitRules: String,
+    val riskRules: String
+)
 
 @Composable
 fun ProfessionalTerminal() {
@@ -105,11 +112,23 @@ private val supportedTimeframes = listOf("1m", "3m", "5m", "15m", "30m", "1h", "
 }
 
 @Composable private fun LiveBacktestPage(fa: Boolean, state: LiveBacktestState, strategy: StrategyPackage) = Page(if (fa) "بک‌تست زنده" else "Live Backtest") {
-    val running by state.running.collectAsState(); val equity by state.equity.collectAsState(); val pnl by state.pnl.collectAsState(); val trades by state.trades.collectAsState(); val win by state.winRate.collectAsState()
+    val running by state.running.collectAsState()
+    val equity by state.equity.collectAsState()
+    val pnl by state.pnl.collectAsState()
+    val trades by state.trades.collectAsState()
+    val win by state.winRate.collectAsState()
     Text("Strategy: ${strategy.name} v${strategy.version}")
     Text(if (running) "🔴 RUNNING" else "⏸ STOPPED")
-    Row { Button({ state.start() }) { Text(if (fa) "شروع" else "Start") }; Spacer(Modifier.width(6.dp)); OutlinedButton({ state.stop() }) { Text(if (fa) "توقف" else "Stop") }; Spacer(Modifier.width(6.dp)); OutlinedButton({ state.reset() }) { Text(if (fa) "ریست" else "Reset") } }
-    Text("Equity: %.2f USDT".format(equity)); Text("PNL: %.2f USDT".format(pnl)); Text("Trades: $trades   Win Rate: %.1f%%".format(win))
+    Row {
+        Button({ state.start() }) { Text(if (fa) "شروع" else "Start") }
+        Spacer(Modifier.width(6.dp))
+        OutlinedButton({ state.stop() }) { Text(if (fa) "توقف" else "Stop") }
+        Spacer(Modifier.width(6.dp))
+        OutlinedButton({ state.reset() }) { Text(if (fa) "ریست" else "Reset") }
+    }
+    Text("Equity: %.2f USDT".format(equity))
+    Text("PNL: %.2f USDT".format(pnl))
+    Text("Trades: $trades   Win Rate: %.1f%%".format(win))
 }
 
 @Composable private fun StrategyPage(fa: Boolean, current: StrategyPackage, onChange: (StrategyPackage) -> Unit) = Page(if (fa) "مدیریت استراتژی" else "Strategy Manager") {
