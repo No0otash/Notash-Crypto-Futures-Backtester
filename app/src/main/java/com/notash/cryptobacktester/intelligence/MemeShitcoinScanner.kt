@@ -2,7 +2,6 @@ package com.notash.cryptobacktester.intelligence
 
 import com.notash.cryptobacktester.core.Candle
 import kotlin.math.abs
-import kotlin.math.ln
 
 /**
  * Provider-neutral Meme/Shitcoin risk scanner. It never invents market/on-chain data;
@@ -36,13 +35,10 @@ data class MemeScanResult(
     val message: String
 )
 
-class MemeShitcoinScanner(
-    private val baselinePeriods: Int = 20
-) {
+class MemeShitcoinScanner(private val baselinePeriods: Int = 20) {
     fun scan(snapshot: MemeCoinSnapshot, candles: List<Candle>): MemeScanResult {
         require(snapshot.liquidityUsd >= 0.0) { "liquidityUsd must not be negative" }
         require(snapshot.marketCapUsd >= 0.0) { "marketCapUsd must not be negative" }
-
         val recent = candles.takeLast(baselinePeriods.coerceAtLeast(2))
         val firstClose = candles.firstOrNull()?.close ?: 0.0
         val lastClose = candles.lastOrNull()?.close ?: 0.0
@@ -53,7 +49,6 @@ class MemeShitcoinScanner(
         val volatility = recent.map { candle ->
             if (candle.close > 0.0) abs(candle.high - candle.low) / candle.close * 100.0 else 0.0
         }.average().takeIf { it.isFinite() } ?: 0.0
-
         var risk = 0.0
         val flags = mutableListOf<String>()
         if (snapshot.liquidityUsd < 100_000.0) { risk += 25.0; flags += "LOW_LIQUIDITY" }
@@ -66,14 +61,12 @@ class MemeShitcoinScanner(
         if (abs(priceChange) >= 30.0) { risk += 10.0; flags += "EXTREME_PRICE_MOVE" }
         if (volatility >= 8.0) { risk += 10.0; flags += "HIGH_VOLATILITY" }
         risk = risk.coerceIn(0.0, 100.0)
-
         val memeLike = risk >= 35.0 || flags.any { it in setOf("MICRO_CAP", "NEW_TOKEN", "HIGH_HOLDER_CONCENTRATION") }
         val opportunity = ((volumeRatio.coerceIn(0.0, 5.0) / 5.0) * 35.0 +
             (abs(priceChange).coerceIn(0.0, 30.0) / 30.0) * 25.0 +
-            (1.0 - (risk / 100.0)) * 40.0).coerceIn(0.0, 100.0)
+            (1.0 - risk / 100.0) * 40.0).coerceIn(0.0, 100.0)
         val complete = candles.isNotEmpty() && snapshot.liquidityUsd > 0.0 && snapshot.marketCapUsd > 0.0
         val message = if (complete) "Scan based only on supplied market/token metadata" else "Incomplete data: score is provisional and no missing data was fabricated"
-
         return MemeScanResult(snapshot.symbol, snapshot.market, memeLike, risk, opportunity, flags.distinct(),
             priceChange, volumeRatio, volatility, snapshot.liquidityUsd, snapshot.marketCapUsd, complete, message)
     }
