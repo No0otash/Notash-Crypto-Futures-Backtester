@@ -16,8 +16,7 @@ import com.notash.cryptobacktester.export.BacktestExportManager
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-// Keep the StrategyPackage definition in this UI module so all Strategy Manager
-// fields used by the composable are resolved against the same model.
+// Local UI model deliberately exposes the rule fields consumed by StrategyPage.
 data class StrategyPackage(
     val id: String,
     val name: String,
