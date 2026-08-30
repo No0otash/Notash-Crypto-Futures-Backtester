@@ -41,7 +41,8 @@ data class Position(
     val quantity: Double,
     val stopLoss: Double,
     val takeProfit: Double,
-    val entryTime: Long
+    val entryTime: Long,
+    val entryFee: Double = 0.0
 )
 
 data class TradeResult(
@@ -59,29 +60,17 @@ data class TradeResult(
 
 data class BacktestConfig(
     val initialBalance: Double = 1000.0,
-
     val riskPercent: Double = 1.0,
-
     val leverage: Double = 10.0,
-
     val makerFee: Double = 0.0002,
-
     val takerFee: Double = 0.0005,
-
     val slippageBps: Double = 2.0,
-
     val fastLwma: Int = 20,
-
     val slowLwma: Int = 50,
-
     val atrPeriod: Int = 14,
-
     val entryAtr: Double = 0.5,
-
     val stopAtr: Double = 1.5,
-
     val takeProfitAtr: Double = 3.0,
-
     val useFunding: Boolean = true
 )
 
