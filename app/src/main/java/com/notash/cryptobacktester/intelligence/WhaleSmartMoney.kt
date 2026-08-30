@@ -21,9 +21,9 @@ data class WhaleTransfer(
 )
 
 enum class WhaleDirection { INFLOW, OUTFLOW, WALLET_TO_WALLET, UNKNOWN }
-en
+
 enum class SmartMoneyBias { ACCUMULATION, DISTRIBUTION, NEUTRAL, UNKNOWN }
-en
+
 enum class WhaleSeverity { LOW, MEDIUM, HIGH, EXTREME }
 
 data class WhaleActivity(
@@ -50,17 +50,28 @@ class WhaleSmartMoneyAnalyzer(
 ) {
     fun analyze(asset: String, transfers: List<WhaleTransfer>, from: Long, until: Long): WhaleActivity {
         val valid = transfers.filter {
-            it.asset.equals(asset, ignoreCase = true) && it.timestamp in from..until && it.usdValue >= minimumUsdValue
+            it.asset.equals(asset, ignoreCase = true) &&
+                it.timestamp in from..until &&
+                it.usdValue >= minimumUsdValue
         }
         if (valid.isEmpty()) {
             return WhaleActivity(
-                asset = asset, fromTimestamp = from, toTimestamp = until, transfers = emptyList(),
-                totalUsdValue = 0.0, inflowUsd = 0.0, outflowUsd = 0.0, score = 0.0,
-                severity = WhaleSeverity.LOW, bias = SmartMoneyBias.UNKNOWN,
-                alert = false, dataAvailable = false,
+                asset = asset,
+                fromTimestamp = from,
+                toTimestamp = until,
+                transfers = emptyList(),
+                totalUsdValue = 0.0,
+                inflowUsd = 0.0,
+                outflowUsd = 0.0,
+                score = 0.0,
+                severity = WhaleSeverity.LOW,
+                bias = SmartMoneyBias.UNKNOWN,
+                alert = false,
+                dataAvailable = false,
                 message = "On-chain whale data is unavailable for this asset/time window"
             )
         }
+
         val inflow = valid.filter { it.direction == WhaleDirection.INFLOW }.sumOf { it.usdValue }
         val outflow = valid.filter { it.direction == WhaleDirection.OUTFLOW }.sumOf { it.usdValue }
         val total = valid.sumOf { it.usdValue }
@@ -76,10 +87,19 @@ class WhaleSmartMoneyAnalyzer(
             outflow > inflow * 1.25 -> SmartMoneyBias.DISTRIBUTION
             else -> SmartMoneyBias.NEUTRAL
         }
+
         return WhaleActivity(
-            asset = asset, fromTimestamp = from, toTimestamp = until, transfers = valid,
-            totalUsdValue = total, inflowUsd = inflow, outflowUsd = outflow, score = score,
-            severity = severity, bias = bias, alert = severity >= WhaleSeverity.HIGH,
+            asset = asset,
+            fromTimestamp = from,
+            toTimestamp = until,
+            transfers = valid,
+            totalUsdValue = total,
+            inflowUsd = inflow,
+            outflowUsd = outflow,
+            score = score,
+            severity = severity,
+            bias = bias,
+            alert = severity >= WhaleSeverity.HIGH,
             dataAvailable = true,
             message = "Real provider data aggregated; bias is directional, not a prediction"
         )
