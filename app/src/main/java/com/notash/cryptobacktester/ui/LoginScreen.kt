@@ -25,7 +25,7 @@ private val LoginMuted = Color(0xFF8B96A8)
 @Composable
 fun LoginGate() {
     var loggedIn by rememberSaveable { mutableStateOf(false) }
-    if (loggedIn) ProfessionalTerminal() else LoginScreen { loggedIn = true }
+    if (loggedIn) AlvexReferenceUi() else LoginScreen { loggedIn = true }
 }
 
 @Composable
@@ -40,7 +40,7 @@ private fun LoginScreen(onLogin: () -> Unit) {
             AlvexLogo(86)
             Spacer(Modifier.height(16.dp))
             Text("ALVEX", color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Black, letterSpacing = 4.sp)
-            Text("Crypto Intelligence • Backtesting • Market Radar", color = LoginMuted, fontSize = 12.sp)
+            Text("AI Market Intelligence • Backtesting • Radar", color = LoginMuted, fontSize = 12.sp)
             Spacer(Modifier.height(30.dp))
             Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(28.dp), colors = CardDefaults.cardColors(containerColor = LoginPanel), elevation = CardDefaults.cardElevation(18.dp)) {
                 Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
