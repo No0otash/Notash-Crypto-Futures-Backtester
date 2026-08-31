@@ -12,8 +12,8 @@ android {
         applicationId = "com.notash.cryptobacktester"
         minSdk = 26
         targetSdk = 35
-        versionCode = 10
-        versionName = "1.0.0"
+        versionCode = 11
+        versionName = "2.0.0"
     }
 
     buildTypes {
@@ -21,7 +21,6 @@ android {
             isMinifyEnabled = false
             isShrinkResources = false
         }
-
         debug {
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
@@ -43,24 +42,17 @@ kotlin {
 }
 
 dependencies {
-
     implementation("androidx.core:core-ktx:1.15.0")
-
     implementation("androidx.activity:activity-compose:1.10.1")
-
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
-
     implementation("androidx.navigation:navigation-compose:2.8.5")
-
     implementation("androidx.compose.ui:ui:1.7.8")
     implementation("androidx.compose.ui:ui-tooling-preview:1.7.8")
-
     implementation("androidx.compose.material3:material3:1.3.1")
-
+    implementation("androidx.compose.material:material-icons-extended:1.7.8")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
-
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     testImplementation(kotlin("test"))
 }
