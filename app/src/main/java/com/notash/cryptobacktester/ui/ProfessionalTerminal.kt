@@ -47,7 +47,6 @@ private val Red = Color(0xFFFF6074)
 private val Gold = Color(0xFFFFC857)
 private val Muted = Color(0xFF8995A8)
 private val Divider = Color(0xFF263343)
-
 private data class Quote(val symbol: String, val price: Double, val change: Double, val volume: Double)
 
 @Composable
@@ -60,37 +59,14 @@ fun ProfessionalTerminal() {
     var supportEmail by rememberSaveable { mutableStateOf("") }
     var notifications by rememberSaveable { mutableStateOf(true) }
     var privacy by rememberSaveable { mutableStateOf(true) }
-
     val viewModel = remember { BacktestViewModel() }
     val state by viewModel.state.collectAsStateWithLifecycle()
 
     MaterialTheme(colorScheme = darkColorScheme(primary = Mint, secondary = Blue, background = Bg, surface = Panel)) {
         if (settingsOpen) {
-            SettingsPage(
-                fa = fa,
-                onLanguage = { fa = it },
-                supportEmail = supportEmail,
-                onSupportEmail = { supportEmail = it },
-                notifications = notifications,
-                onNotifications = { notifications = it },
-                privacy = privacy,
-                onPrivacy = { privacy = it },
-                onBack = { settingsOpen = false }
-            )
+            SettingsPage(fa, { fa = it }, supportEmail, { supportEmail = it }, notifications, { notifications = it }, privacy, { privacy = it }) { settingsOpen = false }
         } else {
-            Scaffold(
-                containerColor = Bg,
-                topBar = {
-                    AlvexHeader(
-                        fa = fa,
-                        page = page,
-                        onAi = { page = TerminalPage.AI },
-                        onSettings = { settingsOpen = true },
-                        onLanguage = { fa = !fa }
-                    )
-                },
-                bottomBar = { TerminalNavigation(page, { page = it }, fa) }
-            ) { padding ->
+            Scaffold(containerColor = Bg, topBar = { AlvexHeader(fa, page, { page = TerminalPage.AI }, { settingsOpen = true }, { fa = !fa }) }, bottomBar = { TerminalNavigation(page, { page = it }, fa) }) { padding ->
                 Box(Modifier.fillMaxSize().padding(padding)) {
                     when (page) {
                         TerminalPage.MARKET -> HomePage(fa, market, { market = it }, state.report) { page = it }
@@ -106,62 +82,24 @@ fun ProfessionalTerminal() {
     }
 }
 
-@Composable
-private fun AlvexHeader(fa: Boolean, page: TerminalPage, onAi: () -> Unit, onSettings: () -> Unit, onLanguage: () -> Unit) {
+@Composable private fun AlvexHeader(fa: Boolean, page: TerminalPage, onAi: () -> Unit, onSettings: () -> Unit, onLanguage: () -> Unit) {
     Box(Modifier.fillMaxWidth().height(68.dp).background(Bg)) {
-        IconButton(onClick = onAi, modifier = Modifier.align(Alignment.CenterStart)) {
-            Icon(Icons.Outlined.AutoAwesome, "AI", tint = Mint)
-        }
-        Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("ALVEX", color = Color.White, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
-            Text(if (fa) page.titleFa else page.titleEn, color = Muted, fontSize = 10.sp)
-        }
-        Row(Modifier.align(Alignment.CenterEnd)) {
-            IconButton(onClick = onLanguage) { Text(if (fa) "EN" else "FA", color = Mint, fontSize = 10.sp, fontWeight = FontWeight.Bold) }
-            IconButton(onClick = onSettings) { Icon(Icons.Outlined.Settings, "Settings", tint = Color.White) }
-        }
+        IconButton(onClick = onAi, modifier = Modifier.align(Alignment.CenterStart)) { Icon(Icons.Outlined.AutoAwesome, "AI", tint = Mint) }
+        Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) { Text("ALVEX", color = Color.White, fontWeight = FontWeight.Black, letterSpacing = 2.sp); Text(if (fa) page.titleFa else page.titleEn, color = Muted, fontSize = 10.sp) }
+        Row(Modifier.align(Alignment.CenterEnd)) { IconButton(onClick = onLanguage) { Text(if (fa) "EN" else "FA", color = Mint, fontSize = 10.sp, fontWeight = FontWeight.Bold) }; IconButton(onClick = onSettings) { Icon(Icons.Outlined.Settings, "Settings", tint = Color.White) } }
     }
 }
 
-@Composable
-private fun HomePage(fa: Boolean, market: String, onMarket: (String) -> Unit, report: BacktestReport?, open: (TerminalPage) -> Unit) {
-    val repo = remember { CoinExRepository() }
-    val scope = rememberCoroutineScope()
-    val symbols = remember { listOf("BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "DOGEUSDT", "PEPEUSDT", "SUIUSDT", "PUMPUSDT") }
-    var quotes by remember { mutableStateOf<List<Quote>>(emptyList()) }
-    var loading by remember { mutableStateOf(true) }
-
-    suspend fun fetchQuotes(): List<Quote> = withContext(Dispatchers.IO) {
-        symbols.mapNotNull { symbol ->
-            val ticker = runCatching { repo.loadLatestTicker(symbol) }.getOrNull() ?: return@mapNotNull null
-            Quote(symbol, ticker.last, ticker.changeRate * 100.0, ticker.volume)
-        }
-    }
-
-    fun refresh() {
-        scope.launch {
-            loading = true
-            quotes = fetchQuotes()
-            loading = false
-        }
-    }
-
+@Composable private fun HomePage(fa: Boolean, market: String, onMarket: (String) -> Unit, report: BacktestReport?, open: (TerminalPage) -> Unit) {
+    val repo = remember { CoinExRepository() }; val scope = rememberCoroutineScope(); val symbols = remember { listOf("BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "DOGEUSDT", "PEPEUSDT", "SUIUSDT", "PUMPUSDT") }
+    var quotes by remember { mutableStateOf<List<Quote>>(emptyList()) }; var loading by remember { mutableStateOf(true) }
+    suspend fun fetchQuotes(): List<Quote> = withContext(Dispatchers.IO) { symbols.mapNotNull { symbol -> val ticker = runCatching { repo.loadLatestTicker(symbol) }.getOrNull() ?: return@mapNotNull null; Quote(symbol, ticker.last, ticker.changeRate * 100.0, ticker.volume) } }
+    fun refresh() { scope.launch { loading = true; quotes = fetchQuotes(); loading = false } }
     LaunchedEffect(Unit) { refresh() }
-
-    LazyColumn(
-        Modifier.fillMaxSize().background(Bg).padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        contentPadding = PaddingValues(bottom = 24.dp)
-    ) {
+    LazyColumn(Modifier.fillMaxSize().background(Bg).padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(bottom = 24.dp)) {
         item { HomeHero(fa, market, onMarket, quotes.firstOrNull { it.symbol == market }, loading, ::refresh) }
         item { SectionTitle(if (fa) "رادار هوشمند بازار" else "AI Market Radar", "Live CoinEx • explainable signals") }
-        item {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Box(Modifier.weight(1f)) { ActionCard("⚡", if (fa) "پامپ / دامپ" else "Pump / Dump") { open(TerminalPage.INTELLIGENCE) } }
-                Box(Modifier.weight(1f)) { ActionCard("🐋", if (fa) "نهنگ" else "Whales") { open(TerminalPage.INTELLIGENCE) } }
-                Box(Modifier.weight(1f)) { ActionCard("🧠", "AI Hub") { open(TerminalPage.AI) } }
-            }
-        }
+        item { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) { Box(Modifier.weight(1f)) { ActionCard("⚡", if (fa) "پامپ / دامپ" else "Pump / Dump") { open(TerminalPage.INTELLIGENCE) } }; Box(Modifier.weight(1f)) { ActionCard("🐋", if (fa) "نهنگ" else "Whales") { open(TerminalPage.INTELLIGENCE) } }; Box(Modifier.weight(1f)) { ActionCard("🧠", "AI Hub") { open(TerminalPage.AI) } } } }
         item { RadarPanel(fa, quotes) }
         item { SectionTitle(if (fa) "نرخ ارزهای منتخب" else "Market Pulse", "Live price • 24h change • volume") }
         items(quotes.take(6)) { quote -> QuoteRow(quote) { onMarket(quote.symbol); open(TerminalPage.MARKETS) } }
@@ -172,323 +110,28 @@ private fun HomePage(fa: Boolean, market: String, onMarket: (String) -> Unit, re
     }
 }
 
-@Composable
-private fun HomeHero(fa: Boolean, market: String, onMarket: (String) -> Unit, quote: Quote?, loading: Boolean, refresh: () -> Unit) {
-    Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(26.dp), colors = CardDefaults.cardColors(containerColor = Panel)) {
-        Column(Modifier.padding(17.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(if (fa) "مرکز فرمان بازار" else "Market Command Center", color = Muted, fontSize = 11.sp)
-                    Text("ALVEX", color = Color.White, fontSize = 27.sp, fontWeight = FontWeight.Black)
-                }
-                IconButton(onClick = refresh) { Icon(Icons.Outlined.Refresh, null, tint = Mint) }
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                OutlinedTextField(market, { value -> onMarket(value.uppercase()) }, Modifier.weight(1f), singleLine = true, label = { Text(if (fa) "نماد بازار" else "Market") })
-                Spacer(Modifier.width(10.dp))
-                Column(horizontalAlignment = Alignment.End) {
-                    Text(if (loading) "…" else quote?.let { formatPrice(it.price) } ?: "—", color = Color.White, fontWeight = FontWeight.Black)
-                    if (!loading) Text(quote?.let { "%+.2f%%".format(it.change) } ?: "", color = if ((quote?.change ?: 0.0) >= 0) Green else Red, fontSize = 11.sp)
-                }
-            }
-        }
-    }
-}
+@Composable private fun HomeHero(fa: Boolean, market: String, onMarket: (String) -> Unit, quote: Quote?, loading: Boolean, refresh: () -> Unit) { Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(26.dp), colors = CardDefaults.cardColors(containerColor = Panel)) { Column(Modifier.padding(17.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) { Row(verticalAlignment = Alignment.CenterVertically) { Column(Modifier.weight(1f)) { Text(if (fa) "مرکز فرمان بازار" else "Market Command Center", color = Muted, fontSize = 11.sp); Text("ALVEX", color = Color.White, fontSize = 27.sp, fontWeight = FontWeight.Black) }; IconButton(onClick = refresh) { Icon(Icons.Outlined.Refresh, null, tint = Mint) } }; Row(verticalAlignment = Alignment.CenterVertically) { OutlinedTextField(market, { value -> onMarket(value.uppercase()) }, Modifier.weight(1f), singleLine = true, label = { Text(if (fa) "نماد بازار" else "Market") }); Spacer(Modifier.width(10.dp)); Column(horizontalAlignment = Alignment.End) { Text(if (loading) "…" else quote?.let { formatPrice(it.price) } ?: "—", color = Color.White, fontWeight = FontWeight.Black); if (!loading) Text(quote?.let { "%+.2f%%".format(it.change) } ?: "", color = if ((quote?.change ?: 0.0) >= 0) Green else Red, fontSize = 11.sp) } } } } }
+@Composable private fun ActionCard(icon: String, title: String, onClick: () -> Unit) { Card(onClick = onClick, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = Panel2)) { Column(Modifier.padding(11.dp), horizontalAlignment = Alignment.CenterHorizontally) { Text(icon, fontSize = 22.sp); Spacer(Modifier.height(4.dp)); Text(title, color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold) } } }
+@Composable private fun RadarPanel(fa: Boolean, quotes: List<Quote>) { val ranked = quotes.map { quote -> quote to ((abs(quote.change) * 10.0 + if (quote.volume > 10_000_000.0) 20.0 else 5.0).coerceIn(0.0, 99.0).toInt()) }.sortedByDescending { it.second }.take(5); Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = Panel)) { Column(Modifier.padding(13.dp)) { if (ranked.isEmpty()) Text(if (fa) "در حال دریافت داده واقعی..." else "Loading live market data...", color = Muted); ranked.forEach { pair -> val quote = pair.first; Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) { Box(Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)).background(if (quote.change >= 0) Green.copy(.12f) else Red.copy(.12f)), contentAlignment = Alignment.Center) { Text(if (quote.change >= 0) "↑" else "↓", color = if (quote.change >= 0) Green else Red, fontWeight = FontWeight.Black) }; Spacer(Modifier.width(9.dp)); Column(Modifier.weight(1f)) { Text(quote.symbol.removeSuffix("USDT"), color = Color.White, fontWeight = FontWeight.Bold); Text(if (quote.change >= 0) "PUMP WATCH" else "DUMP WATCH", color = Muted, fontSize = 9.sp) }; Text(pair.second.toString(), color = Gold, fontWeight = FontWeight.Black); Spacer(Modifier.width(8.dp)); Text("%+.2f".format(quote.change), color = if (quote.change >= 0) Green else Red, fontSize = 11.sp) }; HorizontalDivider(color = Divider) } } } }
+@Composable private fun QuoteRow(quote: Quote, onClick: () -> Unit) { Card(onClick = onClick, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(17.dp), colors = CardDefaults.cardColors(containerColor = Panel)) { Row(Modifier.padding(13.dp), verticalAlignment = Alignment.CenterVertically) { Box(Modifier.size(42.dp).clip(RoundedCornerShape(13.dp)).background(Panel2), contentAlignment = Alignment.Center) { Text(quote.symbol.take(1), color = Mint, fontWeight = FontWeight.Black) }; Spacer(Modifier.width(9.dp)); Column(Modifier.weight(1f)) { Text(quote.symbol.removeSuffix("USDT"), color = Color.White, fontWeight = FontWeight.Bold); Text("USDT • ${compact(quote.volume)} vol", color = Muted, fontSize = 9.sp) }; Column(horizontalAlignment = Alignment.End) { Text(formatPrice(quote.price), color = Color.White, fontWeight = FontWeight.SemiBold); Text("%+.2f%%".format(quote.change), color = if (quote.change >= 0) Green else Red, fontSize = 11.sp) } } } }
+@Composable private fun CurveCard(report: BacktestReport?, open: () -> Unit) { Card(onClick = open, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = Panel)) { Column(Modifier.padding(14.dp)) { Row(Modifier.fillMaxWidth()) { Text("Equity Curve", color = Color.White, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f)); Text(if (report == null) "READY" else "REPORT", color = Mint, fontSize = 9.sp) }; Spacer(Modifier.height(8.dp)); EquityChart(report?.equityCurve ?: emptyList(), Modifier.fillMaxWidth().height(120.dp)); Spacer(Modifier.height(8.dp)); Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { SmallMetric("ROI", report?.roiPercent?.let { "%.2f%%".format(it) } ?: "—"); SmallMetric("PnL", report?.netPnl?.let { "%.2f".format(it) } ?: "—"); SmallMetric("DD", report?.maxDrawdownPercent?.let { "%.2f%%".format(it) } ?: "—") } } } }
+@Composable private fun Workspace(fa: Boolean, open: (TerminalPage) -> Unit) { Column(verticalArrangement = Arrangement.spacedBy(9.dp)) { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(9.dp)) { Box(Modifier.weight(1f)) { WorkspaceTile(Icons.Outlined.ShowChart, if (fa) "بازار" else "Markets") { open(TerminalPage.MARKETS) } }; Box(Modifier.weight(1f)) { WorkspaceTile(Icons.Outlined.Science, if (fa) "استراتژی" else "Strategy Lab") { open(TerminalPage.STRATEGY) } } }; Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(9.dp)) { Box(Modifier.weight(1f)) { WorkspaceTile(Icons.Outlined.AutoGraph, if (fa) "بک‌تست" else "Backtest") { open(TerminalPage.BACKTEST) } }; Box(Modifier.weight(1f)) { WorkspaceTile(Icons.Outlined.Psychology, "AI Hub") { open(TerminalPage.AI) } } } } }
+@Composable private fun WorkspaceTile(icon: ImageVector, title: String, onClick: () -> Unit) { Card(onClick = onClick, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = Panel)) { Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) { Icon(icon, null, tint = Mint); Spacer(Modifier.width(8.dp)); Text(title, color = Color.White, fontWeight = FontWeight.SemiBold) } } }
 
-@Composable
-private fun ActionCard(icon: String, title: String, onClick: () -> Unit) {
-    Card(onClick = onClick, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = Panel2)) {
-        Column(Modifier.padding(11.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(icon, fontSize = 22.sp)
-            Spacer(Modifier.height(4.dp))
-            Text(title, color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold)
-        }
-    }
-}
+@Composable private fun MarketsPage(fa: Boolean, market: String, onMarket: (String) -> Unit, open: () -> Unit) { val repo = remember { CoinExRepository() }; val scope = rememberCoroutineScope(); var query by rememberSaveable { mutableStateOf(market) }; var quote by remember { mutableStateOf<Quote?>(null) }; var loading by remember { mutableStateOf(false) }; fun load() { scope.launch { loading = true; val ticker = runCatching { repo.loadLatestTicker(query.uppercase()) }.getOrNull(); quote = ticker?.let { Quote(query.uppercase(), it.last, it.changeRate * 100.0, it.volume) }; loading = false } }; LaunchedEffect(Unit) { load() }; LazyColumn(Modifier.fillMaxSize().background(Bg).padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) { item { SectionTitle(if (fa) "بازارها" else "Markets", "Real-time CoinEx spot market") }; item { Row(verticalAlignment = Alignment.CenterVertically) { OutlinedTextField(query, { value -> query = value.uppercase() }, Modifier.weight(1f), singleLine = true, label = { Text("Market") }); Spacer(Modifier.width(7.dp)); IconButton(onClick = { load() }) { Icon(Icons.Outlined.Refresh, null, tint = Mint) } } }; item { if (loading) Text("Loading…", color = Muted) else quote?.let { QuoteRow(it) { onMarket(it.symbol); open() } } }; item { Text(if (fa) "بازارهای سریع" else "Quick markets", color = Muted, fontSize = 11.sp) }; items(listOf("BTCUSDT", "ETHUSDT", "SOLUSDT", "DOGEUSDT", "PEPEUSDT")) { symbol -> OutlinedButton(onClick = { query = symbol; onMarket(symbol); load() }, modifier = Modifier.fillMaxWidth()) { Text(symbol) } } } }
 
-@Composable
-private fun RadarPanel(fa: Boolean, quotes: List<Quote>) {
-    val ranked = quotes.map { quote ->
-        val score = ((abs(quote.change) * 10.0) + if (quote.volume > 10_000_000.0) 20.0 else 5.0).coerceIn(0.0, 99.0).toInt()
-        quote to score
-    }.sortedByDescending { it.second }.take(5)
-    Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = Panel)) {
-        Column(Modifier.padding(13.dp)) {
-            if (ranked.isEmpty()) Text(if (fa) "در حال دریافت داده واقعی..." else "Loading live market data...", color = Muted)
-            ranked.forEach { pair ->
-                val quote = pair.first
-                Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)).background(if (quote.change >= 0) Green.copy(.12f) else Red.copy(.12f)), contentAlignment = Alignment.Center) {
-                        Text(if (quote.change >= 0) "↑" else "↓", color = if (quote.change >= 0) Green else Red, fontWeight = FontWeight.Black)
-                    }
-                    Spacer(Modifier.width(9.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(quote.symbol.removeSuffix("USDT"), color = Color.White, fontWeight = FontWeight.Bold)
-                        Text(if (quote.change >= 0) "PUMP WATCH" else "DUMP WATCH", color = Muted, fontSize = 9.sp)
-                    }
-                    Text(pair.second.toString(), color = Gold, fontWeight = FontWeight.Black)
-                    Spacer(Modifier.width(8.dp))
-                    Text("%+.2f".format(quote.change), color = if (quote.change >= 0) Green else Red, fontSize = 11.sp)
-                }
-                HorizontalDivider(color = Divider)
-            }
-        }
-    }
-}
+@Composable private fun BacktestPage(fa: Boolean, market: String, onMarket: (String) -> Unit, timeframe: String, onTimeframe: (String) -> Unit, vm: BacktestViewModel, state: BacktestUiState) { val repo = remember { CoinExRepository() }; val scope = rememberCoroutineScope(); var candles by remember { mutableStateOf<List<Candle>>(emptyList()) }; var selected by remember { mutableStateOf<Int?>(null) }; fun loadChart() { scope.launch { candles = runCatching { repo.loadKlines(market, timeframe, 240) }.getOrDefault(emptyList()) } }; LaunchedEffect(market, timeframe) { vm.setMarket(market); vm.setTimeframe(timeframe); loadChart() }; LazyColumn(Modifier.fillMaxSize().background(Bg).padding(14.dp), verticalArrangement = Arrangement.spacedBy(11.dp), contentPadding = PaddingValues(bottom = 24.dp)) { item { SectionTitle("Backtest Terminal", "Real OHLC • touch chart • robot diagnostics") }; item { Row(verticalAlignment = Alignment.CenterVertically) { OutlinedTextField(market, { value -> onMarket(value.uppercase()) }, Modifier.weight(1f), singleLine = true, label = { Text("Market") }); Spacer(Modifier.width(7.dp)); IconButton(onClick = { loadChart() }) { Icon(Icons.Outlined.Refresh, null, tint = Mint) } } }; item { Timeframes(timeframe, onTimeframe) }; item { CandleChart(candles, state.report?.trades ?: emptyList(), selected, { selected = it }, Modifier.fillMaxWidth().height(310.dp)) }; item { selected?.let { index -> candles.getOrNull(index)?.let { candle -> CandleInfo(index, candle) } } }; item { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) { Box(Modifier.weight(1f)) { Metric("ROI", state.report?.roiPercent?.let { "%.2f%%".format(it) } ?: "—", Green) }; Box(Modifier.weight(1f)) { Metric("PnL", state.report?.netPnl?.let { "%.2f".format(it) } ?: "—", if ((state.report?.netPnl ?: 0.0) >= 0) Green else Red) }; Box(Modifier.weight(1f)) { Metric("Win", state.report?.winRatePercent?.let { "%.1f%%".format(it) } ?: "—", Gold) } } }; item { Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(20.dp)) { Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) { Text(if (fa) "کنترل ربات و خطایابی" else "Robot control & diagnostics", color = Color.White, fontWeight = FontWeight.Bold); Text(state.status, color = Muted, fontSize = 11.sp); state.error?.let { message -> Text(message, color = Red, fontSize = 10.sp) }; Button(onClick = { vm.runBacktest() }, modifier = Modifier.fillMaxWidth(), enabled = !state.isRunning) { Icon(Icons.Outlined.PlayArrow, null); Spacer(Modifier.width(6.dp)); Text(if (fa) "اجرای بک‌تست واقعی" else "Run real backtest") } } } }; item { state.report?.let { report -> TradeList(report.trades, fa) } } } }
 
-@Composable
-private fun QuoteRow(quote: Quote, onClick: () -> Unit) {
-    Card(onClick = onClick, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(17.dp), colors = CardDefaults.cardColors(containerColor = Panel)) {
-        Row(Modifier.padding(13.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(42.dp).clip(RoundedCornerShape(13.dp)).background(Panel2), contentAlignment = Alignment.Center) { Text(quote.symbol.take(1), color = Mint, fontWeight = FontWeight.Black) }
-            Spacer(Modifier.width(9.dp))
-            Column(Modifier.weight(1f)) { Text(quote.symbol.removeSuffix("USDT"), color = Color.White, fontWeight = FontWeight.Bold); Text("USDT • ${compact(quote.volume)} vol", color = Muted, fontSize = 9.sp) }
-            Column(horizontalAlignment = Alignment.End) { Text(formatPrice(quote.price), color = Color.White, fontWeight = FontWeight.SemiBold); Text("%+.2f%%".format(quote.change), color = if (quote.change >= 0) Green else Red, fontSize = 11.sp) }
-        }
-    }
-}
+@Composable private fun StrategyPage(fa: Boolean) { var name by rememberSaveable { mutableStateOf("Advanced Pullback") }; var entry by rememberSaveable { mutableStateOf("LWMA20 > LWMA50 + ATR") }; var exit by rememberSaveable { mutableStateOf("SL 1.5 ATR / TP 3 ATR") }; var risk by rememberSaveable { mutableStateOf("1") }; var saved by rememberSaveable { mutableStateOf(false) }; LazyColumn(Modifier.fillMaxSize().background(Bg).padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) { item { SectionTitle(if (fa) "مدیریت استراتژی" else "Strategy Lab", "Editable strategy workspace") }; item { Field("Strategy name", name) { name = it } }; item { Field("Entry rules", entry) { entry = it } }; item { Field("Exit / SL / TP", exit) { exit = it } }; item { Field("Risk %", risk) { risk = it } }; item { Button(onClick = { saved = true }, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Outlined.Save, null); Spacer(Modifier.width(6.dp)); Text(if (fa) "ذخیره و فعال‌سازی" else "Save & Activate") } }; item { if (saved) Text(if (fa) "Strategy فعال است." else "Strategy is active.", color = Green) }; item { OutlinedButton(onClick = { }, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Outlined.UploadFile, null); Spacer(Modifier.width(6.dp)); Text(if (fa) "Import Robot / JSON / ZIP" else "Import Robot / JSON / ZIP") } } } }
 
-@Composable
-private fun CurveCard(report: BacktestReport?, open: () -> Unit) {
-    Card(onClick = open, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = Panel)) {
-        Column(Modifier.padding(14.dp)) {
-            Row(Modifier.fillMaxWidth()) { Text("Equity Curve", color = Color.White, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f)); Text(if (report == null) "READY" else "REPORT", color = Mint, fontSize = 9.sp) }
-            Spacer(Modifier.height(8.dp))
-            EquityChart(report?.equityCurve ?: emptyList(), Modifier.fillMaxWidth().height(120.dp))
-            Spacer(Modifier.height(8.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                SmallMetric("ROI", report?.roiPercent?.let { "%.2f%%".format(it) } ?: "—")
-                SmallMetric("PnL", report?.netPnl?.let { "%.2f".format(it) } ?: "—")
-                SmallMetric("DD", report?.maxDrawdownPercent?.let { "%.2f%%".format(it) } ?: "—")
-            }
-        }
-    }
-}
+@Composable private fun IntelligencePage(fa: Boolean, market: String) { val repo = remember { CoinExRepository() }; val scope = rememberCoroutineScope(); var text by remember { mutableStateOf(if (fa) "در حال تحلیل..." else "Analyzing...") }; var score by remember { mutableStateOf(0) }; fun analyze() { scope.launch { val candles = runCatching { repo.loadKlines(market, "15min", 120) }.getOrNull(); if (candles == null) { text = "Market data unavailable"; return@launch }; val signal = PumpDumpDetector().analyze(candles); if (signal == null) { score = 0; text = if (fa) "سیگنال قوی پامپ/دامپ دیده نشد" else "No strong pump/dump anomaly" } else { score = signal.score.toInt(); text = "${signal.direction} • ${"%.2f".format(signal.priceChangePercent)}% • volume x${"%.1f".format(signal.volumeRatio)} • ${signal.severity}" } } }; LaunchedEffect(market) { analyze() }; LazyColumn(Modifier.fillMaxSize().background(Bg).padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) { item { SectionTitle("Coin Intelligence", "Pump/Dump • Whale • Meme • Tokenomics") }; item { Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = Panel)) { Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) { Text(market, color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Black); Text("Signal score", color = Muted, fontSize = 10.sp); Text("$score / 100", color = if (score >= 70) Gold else Mint, fontSize = 32.sp, fontWeight = FontWeight.Black); Text(text, color = Color.White, fontSize = 12.sp); Button(onClick = { analyze() }, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Outlined.Bolt, null); Spacer(Modifier.width(6.dp)); Text(if (fa) "تحلیل مجدد" else "Analyze again") } } } }; item { IntelligenceTile(Icons.Outlined.Whatshot, "Meme / Shitcoin Scanner", "Risk + liquidity + volatility") }; item { IntelligenceTile(Icons.Outlined.AccountBalanceWallet, "Whale / Smart Money", "Provider-neutral on-chain layer") }; item { IntelligenceTile(Icons.Outlined.Token, "Tokenomics / Unlock", "Supply + allocation + vesting") }; item { IntelligenceTile(Icons.Outlined.Groups, "Team / Investors", "Research + transparency") } } }
 
-@Composable
-private fun Workspace(fa: Boolean, open: (TerminalPage) -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-            Box(Modifier.weight(1f)) { WorkspaceTile(Icons.Outlined.ShowChart, if (fa) "بازار" else "Markets") { open(TerminalPage.MARKETS) } }
-            Box(Modifier.weight(1f)) { WorkspaceTile(Icons.Outlined.Science, if (fa) "استراتژی" else "Strategy Lab") { open(TerminalPage.STRATEGY) } }
-        }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-            Box(Modifier.weight(1f)) { WorkspaceTile(Icons.Outlined.AutoGraph, if (fa) "بک‌تست" else "Backtest") { open(TerminalPage.BACKTEST) } }
-            Box(Modifier.weight(1f)) { WorkspaceTile(Icons.Outlined.Psychology, "AI Hub") { open(TerminalPage.AI) } }
-        }
-    }
-}
+@Composable private fun AiPage(fa: Boolean, market: String, report: BacktestReport?) { var prompt by rememberSaveable { mutableStateOf("") }; var answer by rememberSaveable { mutableStateOf(if (fa) "ALVEX AI آماده تحلیل Coin، Strategy و معاملات شماست." else "ALVEX AI is ready for coin, strategy and trade analysis.") }; LazyColumn(Modifier.fillMaxSize().background(Bg).padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) { item { Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(25.dp), colors = CardDefaults.cardColors(containerColor = Panel)) { Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) { Row(verticalAlignment = Alignment.CenterVertically) { AlvexLogo(48); Spacer(Modifier.width(9.dp)); Column { Text("ALVEX AI", color = Color.White, fontSize = 21.sp, fontWeight = FontWeight.Black); Text("Explainable Intelligence Hub", color = Muted, fontSize = 10.sp) } }; Text(answer, color = Color.White, fontSize = 13.sp); report?.let { context -> Text("Backtest: ROI ${"%.2f".format(context.roiPercent)}% • Win ${"%.1f".format(context.winRatePercent)}% • DD ${"%.2f".format(context.maxDrawdownPercent)}%", color = Mint, fontSize = 10.sp) } } } }; item { Field("Coin / Strategy / Trade", prompt) { prompt = it } }; item { Button(onClick = { answer = if (prompt.isBlank()) { if (fa) "برای تحلیل $market یک ورودی وارد کنید." else "Enter a prompt for $market." } else { "ALVEX AI: $prompt — trend, volatility, volume, pump/dump risk and strategy diagnostics requested. Unknown data remains Unknown; no guaranteed prediction is presented." } }, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Outlined.AutoAwesome, null); Spacer(Modifier.width(6.dp)); Text(if (fa) "تحلیل با AI" else "Analyze with AI") } }; item { Text(if (fa) "این لایه برای اتصال Provider واقعی AI طراحی شده و بدون Provider خروجی جعلی تولید نمی‌کند." else "The AI layer is provider-neutral and does not fabricate model output without a live provider.", color = Muted, fontSize = 10.sp) } } }
 
-@Composable
-private fun WorkspaceTile(icon: ImageVector, title: String, onClick: () -> Unit) {
-    Card(onClick = onClick, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = Panel)) {
-        Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) { Icon(icon, null, tint = Mint); Spacer(Modifier.width(8.dp)); Text(title, color = Color.White, fontWeight = FontWeight.SemiBold) }
-    }
-}
-
-@Composable
-private fun MarketsPage(fa: Boolean, market: String, onMarket: (String) -> Unit, open: () -> Unit) {
-    val repo = remember { CoinExRepository() }
-    val scope = rememberCoroutineScope()
-    var query by rememberSaveable { mutableStateOf(market) }
-    var quote by remember { mutableStateOf<Quote?>(null) }
-    var loading by remember { mutableStateOf(false) }
-
-    fun load() {
-        scope.launch {
-            loading = true
-            val ticker = runCatching { repo.loadLatestTicker(query.uppercase()) }.getOrNull()
-            quote = ticker?.let { Quote(query.uppercase(), it.last, it.changeRate * 100.0, it.volume) }
-            loading = false
-        }
-    }
-    LaunchedEffect(Unit) { load() }
-
-    LazyColumn(Modifier.fillMaxSize().background(Bg).padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        item { SectionTitle(if (fa) "بازارها" else "Markets", "Real-time CoinEx spot market") }
-        item {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                OutlinedTextField(query, { value -> query = value.uppercase() }, Modifier.weight(1f), singleLine = true, label = { Text("Market") })
-                Spacer(Modifier.width(7.dp))
-                IconButton(onClick = { load() }) { Icon(Icons.Outlined.Refresh, null, tint = Mint) }
-            }
-        }
-        item { if (loading) Text("Loading…", color = Muted) else quote?.let { QuoteRow(it) { onMarket(it.symbol); open() } } }
-        item { Text(if (fa) "بازارهای سریع" else "Quick markets", color = Muted, fontSize = 11.sp) }
-        items(listOf("BTCUSDT", "ETHUSDT", "SOLUSDT", "DOGEUSDT", "PEPEUSDT")) { symbol ->
-            OutlinedButton(onClick = { query = symbol; onMarket(symbol); load() }, modifier = Modifier.fillMaxWidth()) { Text(symbol) }
-        }
-    }
-}
-
-@Composable
-private fun BacktestPage(fa: Boolean, market: String, onMarket: (String) -> Unit, timeframe: String, onTimeframe: (String) -> Unit, vm: BacktestViewModel, state: BacktestUiState) {
-    val repo = remember { CoinExRepository() }
-    val scope = rememberCoroutineScope()
-    var candles by remember { mutableStateOf<List<Candle>>(emptyList()) }
-    var selected by remember { mutableStateOf<Int?>(null) }
-
-    fun loadChart() {
-        scope.launch { candles = runCatching { repo.loadKlines(market, timeframe, 240) }.getOrDefault(emptyList()) }
-    }
-    LaunchedEffect(market, timeframe) { vm.setMarket(market); vm.setTimeframe(timeframe); loadChart() }
-
-    LazyColumn(Modifier.fillMaxSize().background(Bg).padding(14.dp), verticalArrangement = Arrangement.spacedBy(11.dp), contentPadding = PaddingValues(bottom = 24.dp)) {
-        item { SectionTitle("Backtest Terminal", "Real OHLC • touch chart • robot diagnostics") }
-        item {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                OutlinedTextField(market, { value -> onMarket(value.uppercase()) }, Modifier.weight(1f), singleLine = true, label = { Text("Market") })
-                Spacer(Modifier.width(7.dp))
-                IconButton(onClick = { loadChart() }) { Icon(Icons.Outlined.Refresh, null, tint = Mint) }
-            }
-        }
-        item { Timeframes(timeframe, onTimeframe) }
-        item { CandleChart(candles, state.report?.trades ?: emptyList(), selected, { selected = it }, Modifier.fillMaxWidth().height(310.dp)) }
-        item { selected?.let { index -> candles.getOrNull(index)?.let { candle -> CandleInfo(index, candle) } } }
-        item {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                Box(Modifier.weight(1f)) { Metric("ROI", state.report?.roiPercent?.let { "%.2f%%".format(it) } ?: "—", Green) }
-                Box(Modifier.weight(1f)) { Metric("PnL", state.report?.netPnl?.let { "%.2f".format(it) } ?: "—", if ((state.report?.netPnl ?: 0.0) >= 0) Green else Red) }
-                Box(Modifier.weight(1f)) { Metric("Win", state.report?.winRatePercent?.let { "%.1f%%".format(it) } ?: "—", Gold) }
-            }
-        }
-        item {
-            Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(20.dp)) {
-                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(if (fa) "کنترل ربات و خطایابی" else "Robot control & diagnostics", color = Color.White, fontWeight = FontWeight.Bold)
-                    Text(state.status, color = Muted, fontSize = 11.sp)
-                    state.error?.let { message -> Text(message, color = Red, fontSize = 10.sp) }
-                    Button(onClick = { vm.runBacktest() }, modifier = Modifier.fillMaxWidth(), enabled = !state.isRunning) { Icon(Icons.Outlined.PlayArrow, null); Spacer(Modifier.width(6.dp)); Text(if (fa) "اجرای بک‌تست واقعی" else "Run real backtest") }
-                }
-            }
-        }
-        item { state.report?.let { report -> TradeList(report.trades, fa) } }
-    }
-}
-
-@Composable
-private fun StrategyPage(fa: Boolean) {
-    var name by rememberSaveable { mutableStateOf("Advanced Pullback") }
-    var entry by rememberSaveable { mutableStateOf("LWMA20 > LWMA50 + ATR") }
-    var exit by rememberSaveable { mutableStateOf("SL 1.5 ATR / TP 3 ATR") }
-    var risk by rememberSaveable { mutableStateOf("1") }
-    var saved by rememberSaveable { mutableStateOf(false) }
-    LazyColumn(Modifier.fillMaxSize().background(Bg).padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        item { SectionTitle(if (fa) "مدیریت استراتژی" else "Strategy Lab", "Editable strategy workspace") }
-        item { Field("Strategy name", name) { name = it } }
-        item { Field("Entry rules", entry) { entry = it } }
-        item { Field("Exit / SL / TP", exit) { exit = it } }
-        item { Field("Risk %", risk) { risk = it } }
-        item { Button(onClick = { saved = true }, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Outlined.Save, null); Spacer(Modifier.width(6.dp)); Text(if (fa) "ذخیره و فعال‌سازی" else "Save & Activate") } }
-        item { if (saved) Text(if (fa) "Strategy فعال است." else "Strategy is active.", color = Green) }
-        item { OutlinedButton(onClick = { }, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Outlined.UploadFile, null); Spacer(Modifier.width(6.dp)); Text(if (fa) "Import Robot / JSON / ZIP" else "Import Robot / JSON / ZIP") } }
-    }
-}
-
-@Composable
-private fun IntelligencePage(fa: Boolean, market: String) {
-    val repo = remember { CoinExRepository() }
-    val scope = rememberCoroutineScope()
-    var text by remember { mutableStateOf(if (fa) "در حال تحلیل..." else "Analyzing...") }
-    var score by remember { mutableStateOf(0) }
-
-    fun analyze() {
-        scope.launch {
-            val candles = runCatching { repo.loadKlines(market, "15min", 120) }.getOrNull()
-            if (candles == null) {
-                text = "Market data unavailable"
-                return@launch
-            }
-            val signal = PumpDumpDetector().analyze(candles)
-            if (signal == null) {
-                score = 0
-                text = if (fa) "سیگنال قوی پامپ/دامپ دیده نشد" else "No strong pump/dump anomaly"
-            } else {
-                score = signal.score.toInt()
-                text = "${signal.direction} • ${"%.2f".format(signal.priceChangePercent)}% • volume x${"%.1f".format(signal.volumeRatio)} • ${signal.severity}"
-            }
-        }
-    }
-    LaunchedEffect(market) { analyze() }
-
-    LazyColumn(Modifier.fillMaxSize().background(Bg).padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        item { SectionTitle("Coin Intelligence", "Pump/Dump • Whale • Meme • Tokenomics") }
-        item {
-            Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = Panel)) {
-                Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(market, color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Black)
-                    Text("Signal score", color = Muted, fontSize = 10.sp)
-                    Text("$score / 100", color = if (score >= 70) Gold else Mint, fontSize = 32.sp, fontWeight = FontWeight.Black)
-                    Text(text, color = Color.White, fontSize = 12.sp)
-                    Button(onClick = { analyze() }, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Outlined.Bolt, null); Spacer(Modifier.width(6.dp)); Text(if (fa) "تحلیل مجدد" else "Analyze again") }
-                }
-            }
-        }
-        item { IntelligenceTile(Icons.Outlined.Whatshot, "Meme / Shitcoin Scanner", "Risk + liquidity + volatility") }
-        item { IntelligenceTile(Icons.Outlined.AccountBalanceWallet, "Whale / Smart Money", "Provider-neutral on-chain layer") }
-        item { IntelligenceTile(Icons.Outlined.Token, "Tokenomics / Unlock", "Supply + allocation + vesting") }
-        item { IntelligenceTile(Icons.Outlined.Groups, "Team / Investors", "Research + transparency") }
-    }
-}
-
-@Composable
-private fun AiPage(fa: Boolean, market: String, report: BacktestReport?) {
-    var prompt by rememberSaveable { mutableStateOf("") }
-    var answer by rememberSaveable { mutableStateOf(if (fa) "ALVEX AI آماده تحلیل Coin، Strategy و معاملات شماست." else "ALVEX AI is ready for coin, strategy and trade analysis.") }
-    LazyColumn(Modifier.fillMaxSize().background(Bg).padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        item {
-            Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(25.dp), colors = CardDefaults.cardColors(containerColor = Panel)) {
-                Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) { AlvexLogo(48); Spacer(Modifier.width(9.dp)); Column { Text("ALVEX AI", color = Color.White, fontSize = 21.sp, fontWeight = FontWeight.Black); Text("Explainable Intelligence Hub", color = Muted, fontSize = 10.sp) } }
-                    Text(answer, color = Color.White, fontSize = 13.sp)
-                    report?.let { context -> Text("Backtest: ROI ${"%.2f".format(context.roiPercent)}% • Win ${"%.1f".format(context.winRatePercent)}% • DD ${"%.2f".format(context.maxDrawdownPercent)}%", color = Mint, fontSize = 10.sp) }
-                }
-            }
-        }
-        item { Field("Coin / Strategy / Trade", prompt) { prompt = it } }
-        item {
-            Button(onClick = {
-                answer = if (prompt.isBlank()) {
-                    if (fa) "برای تحلیل $market یک ورودی وارد کنید." else "Enter a prompt for $market."
-                } else {
-                    "ALVEX AI: $prompt — trend, volatility, volume, pump/dump risk and strategy diagnostics requested. Unknown data remains Unknown; no guaranteed prediction is presented."
-                }
-            }, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Outlined.AutoAwesome, null); Spacer(Modifier.width(6.dp)); Text(if (fa) "تحلیل با AI" else "Analyze with AI") }
-        }
-        item { Text(if (fa) "این لایه برای اتصال Provider واقعی AI طراحی شده و بدون Provider خروجی جعلی تولید نمی‌کند." else "The AI layer is provider-neutral and does not fabricate model output without a live provider.", color = Muted, fontSize = 10.sp) }
-    }
-}
-
-@Composable
-private fun SettingsPage(fa: Boolean, onLanguage: (Boolean) -> Unit, supportEmail: String, onSupportEmail: (String) -> Unit, notifications: Boolean, onNotifications: (Boolean) -> Unit, privacy: Boolean, onPrivacy: (Boolean) -> Unit, onBack: () -> Unit) {
-    val context = LocalContext.current
-    Column(Modifier.fillMaxSize().background(Bg)) {
-        Row(Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBack) { Icon(Icons.Outlined.ArrowBack, null, tint = Color.White) }
-            Column(Modifier.weight(1f)) { Text("ALVEX", color = Color.White, fontWeight = FontWeight.Black); Text(if (fa) "تنظیمات" else "Settings", color = Muted, fontSize = 10.sp) }
-        }
-        LazyColumn(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            item { SettingsGroup(Icons.Outlined.Person, if (fa) "پروفایل" else "Profile") { Text(if (fa) "پروفایل و ترجیحات فضای کاری" else "Profile and workspace preferences", color = Muted, fontSize = 11.sp) } }
-            item { SettingSwitch(Icons.Outlined.Security, if (fa) "امنیت و Privacy" else "Security & Privacy", privacy, onPrivacy) }
-            item { SettingSwitch(Icons.Outlined.Notifications, if (fa) "اعلان‌ها" else "Notifications", notifications, onNotifications) }
-            item { SettingsGroup(Icons.Outlined.Language, if (fa) "زبان" else "Language") { Row(verticalAlignment = Alignment.CenterVertically) { Text(if (fa) "فارسی" else "English", color = Color.White, Modifier.weight(1f)); Switch(checked = fa, onCheckedChange = onLanguage) } } }
-            item {
-                SettingsGroup(Icons.Outlined.SupportAgent, if (fa) "پشتیبانی ایمیلی" else "Email Support") {
-                    Field("Support email", supportEmail, onSupportEmail)
-                    Button(onClick = { val address = supportEmail.trim(); if (address.isNotBlank()) runCatching { context.startActivity(Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:$address"))) } }, modifier = Modifier.fillMaxWidth(), enabled = supportEmail.isNotBlank()) { Icon(Icons.Outlined.Email, null); Spacer(Modifier.width(6.dp)); Text(if (fa) "ارسال ایمیل" else "Open email") }
-                }
-            }
-            item {
-                SettingsGroup(Icons.Outlined.Share, if (fa) "اشتراک‌گذاری" else "Share") {
-                    OutlinedButton(onClick = { val intent = Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, "ALVEX — Crypto Intelligence & Backtesting") }; context.startActivity(Intent.createChooser(intent, "Share ALVEX")) }, modifier = Modifier.fillMaxWidth()) { Text(if (fa) "اشتراک‌گذاری ALVEX" else "Share ALVEX") }
-                }
-            }
-        }
-    }
-}
+@Composable private fun SettingsPage(fa: Boolean, onLanguage: (Boolean) -> Unit, supportEmail: String, onSupportEmail: (String) -> Unit, notifications: Boolean, onNotifications: (Boolean) -> Unit, privacy: Boolean, onPrivacy: (Boolean) -> Unit, onBack: () -> Unit) { val context = LocalContext.current; Column(Modifier.fillMaxSize().background(Bg)) { Row(Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.CenterVertically) { IconButton(onClick = onBack) { Icon(Icons.Outlined.ArrowBack, null, tint = Color.White) }; Column(Modifier.weight(1f)) { Text("ALVEX", color = Color.White, fontWeight = FontWeight.Black); Text(if (fa) "تنظیمات" else "Settings", color = Muted, fontSize = 10.sp) } }; LazyColumn(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) { item { SettingsGroup(Icons.Outlined.Person, if (fa) "پروفایل" else "Profile") { Text(if (fa) "پروفایل و ترجیحات فضای کاری" else "Profile and workspace preferences", color = Muted, fontSize = 11.sp) } }; item { SettingSwitch(Icons.Outlined.Security, if (fa) "امنیت و Privacy" else "Security & Privacy", privacy, onPrivacy) }; item { SettingSwitch(Icons.Outlined.Notifications, if (fa) "اعلان‌ها" else "Notifications", notifications, onNotifications) }; item { SettingsGroup(Icons.Outlined.Language, if (fa) "زبان" else "Language") { Row(verticalAlignment = Alignment.CenterVertically) { Text(if (fa) "فارسی" else "English", color = Color.White, modifier = Modifier.weight(1f)); Switch(checked = fa, onCheckedChange = onLanguage) } } }; item { SettingsGroup(Icons.Outlined.SupportAgent, if (fa) "پشتیبانی ایمیلی" else "Email Support") { Field("Support email", supportEmail, onSupportEmail); Button(onClick = { val address = supportEmail.trim(); if (address.isNotBlank()) runCatching { context.startActivity(Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:$address"))) } }, modifier = Modifier.fillMaxWidth(), enabled = supportEmail.isNotBlank()) { Icon(Icons.Outlined.Email, null); Spacer(Modifier.width(6.dp)); Text(if (fa) "ارسال ایمیل" else "Open email") } } }; item { SettingsGroup(Icons.Outlined.Share, if (fa) "اشتراک‌گذاری" else "Share") { OutlinedButton(onClick = { val intent = Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, "ALVEX — Crypto Intelligence & Backtesting") }; context.startActivity(Intent.createChooser(intent, "Share ALVEX")) }, modifier = Modifier.fillMaxWidth()) { Text(if (fa) "اشتراک‌گذاری ALVEX" else "Share ALVEX") } } } } } }
 
 @Composable private fun SettingsGroup(icon: ImageVector, title: String, content: @Composable ColumnScope.() -> Unit) { Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = Panel)) { Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) { Row(verticalAlignment = Alignment.CenterVertically) { Icon(icon, null, tint = Mint); Spacer(Modifier.width(8.dp)); Text(title, color = Color.White, fontWeight = FontWeight.Bold) }; content() } } }
-@Composable private fun SettingSwitch(icon: ImageVector, title: String, checked: Boolean, onChecked: (Boolean) -> Unit) { Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = Panel)) { Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) { Icon(icon, null, tint = Mint); Spacer(Modifier.width(9.dp)); Text(title, color = Color.White, Modifier.weight(1f)); Switch(checked = checked, onCheckedChange = onChecked) } } }
+@Composable private fun SettingSwitch(icon: ImageVector, title: String, checked: Boolean, onChecked: (Boolean) -> Unit) { Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = Panel)) { Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) { Icon(icon, null, tint = Mint); Spacer(Modifier.width(9.dp)); Text(title, color = Color.White, modifier = Modifier.weight(1f)); Switch(checked = checked, onCheckedChange = onChecked) } } }
 @Composable private fun Field(label: String, value: String, onValue: (String) -> Unit) { OutlinedTextField(value, onValue, Modifier.fillMaxWidth(), label = { Text(label) }, singleLine = true, shape = RoundedCornerShape(14.dp)) }
 @Composable private fun SectionTitle(title: String, subtitle: String) { Column { Text(title, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Black); Text(subtitle, color = Muted, fontSize = 9.sp) } }
 @Composable private fun Timeframes(selected: String, onSelect: (String) -> Unit) { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) { listOf("1min", "5min", "15min", "1hour", "4hour", "1day").forEach { value -> FilterChip(selected = selected == value, onClick = { onSelect(value) }, label = { Text(value, fontSize = 9.sp) }) } } }
@@ -496,38 +139,9 @@ private fun SettingsPage(fa: Boolean, onLanguage: (Boolean) -> Unit, supportEmai
 @Composable private fun SmallMetric(label: String, value: String) { Column { Text(label, color = Muted, fontSize = 8.sp); Text(value, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 11.sp) } }
 @Composable private fun IntelligenceTile(icon: ImageVector, title: String, subtitle: String) { Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = Panel)) { Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) { Icon(icon, null, tint = Mint); Spacer(Modifier.width(10.dp)); Column { Text(title, color = Color.White, fontWeight = FontWeight.Bold); Text(subtitle, color = Muted, fontSize = 10.sp) } } } }
 
-@Composable
-private fun CandleChart(candles: List<Candle>, trades: List<TradeResult>, selected: Int?, onSelect: (Int) -> Unit, modifier: Modifier) {
-    if (candles.isEmpty()) { Box(modifier.background(Panel2, RoundedCornerShape(18.dp)), contentAlignment = Alignment.Center) { Text("Loading CoinEx candles…", color = Muted) }; return }
-    Canvas(modifier.background(Panel2, RoundedCornerShape(18.dp)).pointerInput(candles) { detectTapGestures { point -> onSelect(((point.x / size.width) * candles.size).toInt().coerceIn(0, candles.lastIndex)) } }) {
-        val minPrice = candles.minOf { it.low }
-        val maxPrice = candles.maxOf { it.high }
-        val range = (maxPrice - minPrice).takeIf { it > 0 } ?: 1.0
-        val step = size.width / candles.size
-        val bodyWidth = (step * 0.58f).coerceAtLeast(2f)
-        candles.forEachIndexed { index, candle ->
-            fun y(price: Double): Float = size.height - ((price - minPrice) / range * size.height).toFloat()
-            val x = index * step + step / 2f
-            val bullish = candle.close >= candle.open
-            val color = if (bullish) Green else Red
-            val top = y(maxOf(candle.open, candle.close))
-            val bottom = y(minOf(candle.open, candle.close))
-            drawLine(color, Offset(x, y(candle.high)), Offset(x, y(candle.low)), 1.5f)
-            drawRect(color, Offset(x - bodyWidth / 2f, top), androidx.compose.ui.geometry.Size(bodyWidth, maxOf(2f, bottom - top)))
-            if (selected == index) drawLine(Color.White, Offset(x, 0f), Offset(x, size.height), 1f)
-        }
-        trades.forEach { trade ->
-            val index = candles.indices.minByOrNull { candleIndex -> abs(candles[candleIndex].timestamp - trade.entryTime) } ?: return@forEach
-            val x = index * step + step / 2f
-            val y = size.height - ((trade.entryPrice - minPrice) / range * size.height).toFloat()
-            drawCircle(if (trade.netPnl >= 0) Green else Red, 5f, Offset(x, y))
-        }
-    }
-}
-
+@Composable private fun CandleChart(candles: List<Candle>, trades: List<TradeResult>, selected: Int?, onSelect: (Int) -> Unit, modifier: Modifier) { if (candles.isEmpty()) { Box(modifier.background(Panel2, RoundedCornerShape(18.dp)), contentAlignment = Alignment.Center) { Text("Loading CoinEx candles…", color = Muted) }; return }; Canvas(modifier.background(Panel2, RoundedCornerShape(18.dp)).pointerInput(candles) { detectTapGestures { point -> onSelect(((point.x / size.width) * candles.size).toInt().coerceIn(0, candles.lastIndex)) } }) { val minPrice = candles.minOf { it.low }; val maxPrice = candles.maxOf { it.high }; val range = (maxPrice - minPrice).takeIf { it > 0 } ?: 1.0; val step = size.width / candles.size; val bodyWidth = (step * 0.58f).coerceAtLeast(2f); candles.forEachIndexed { index, candle -> fun y(price: Double): Float = size.height - ((price - minPrice) / range * size.height).toFloat(); val x = index * step + step / 2f; val bullish = candle.close >= candle.open; val color = if (bullish) Green else Red; val top = y(maxOf(candle.open, candle.close)); val bottom = y(minOf(candle.open, candle.close)); drawLine(color, Offset(x, y(candle.high)), Offset(x, y(candle.low)), 1.5f); drawRect(color, Offset(x - bodyWidth / 2f, top), androidx.compose.ui.geometry.Size(bodyWidth, maxOf(2f, bottom - top))); if (selected == index) drawLine(Color.White, Offset(x, 0f), Offset(x, size.height), 1f) }; trades.forEach { trade -> val index = candles.indices.minByOrNull { candleIndex -> abs(candles[candleIndex].timestamp - trade.entryTime) } ?: return@forEach; val x = index * step + step / 2f; val y = size.height - ((trade.entryPrice - minPrice) / range * size.height).toFloat(); drawCircle(if (trade.netPnl >= 0) Green else Red, 5f, Offset(x, y)) } } }
 @Composable private fun CandleInfo(index: Int, candle: Candle) { Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(15.dp)) { Row(Modifier.fillMaxWidth().padding(10.dp), horizontalArrangement = Arrangement.SpaceBetween) { Text("#$index", color = Mint, fontWeight = FontWeight.Bold); Text("O ${formatPrice(candle.open)}", color = Color.White, fontSize = 10.sp); Text("H ${formatPrice(candle.high)}", color = Color.White, fontSize = 10.sp); Text("L ${formatPrice(candle.low)}", color = Color.White, fontSize = 10.sp); Text("C ${formatPrice(candle.close)}", color = if (candle.close >= candle.open) Green else Red, fontSize = 10.sp) } } }
 @Composable private fun EquityChart(values: List<Double>, modifier: Modifier) { Canvas(modifier.background(Panel2, RoundedCornerShape(14.dp))) { if (values.size < 2) return@Canvas; val minValue = values.minOrNull() ?: 0.0; val maxValue = values.maxOrNull() ?: 1.0; val range = (maxValue - minValue).takeIf { it > 0 } ?: 1.0; val step = size.width / (values.size - 1); for (i in 1 until values.size) { val y1 = size.height - ((values[i - 1] - minValue) / range * size.height).toFloat(); val y2 = size.height - ((values[i] - minValue) / range * size.height).toFloat(); drawLine(Mint, Offset((i - 1) * step, y1), Offset(i * step, y2), 3f) } } }
 @Composable private fun TradeList(trades: List<TradeResult>, fa: Boolean) { Column(verticalArrangement = Arrangement.spacedBy(6.dp)) { Text(if (fa) "معاملات و نقاط ورود/خروج" else "Trades & robot entry/exit diagnostics", color = Color.White, fontWeight = FontWeight.Bold); trades.takeLast(25).asReversed().forEachIndexed { index, trade -> Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(14.dp)) { Row(Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) { Text("#${trades.size - index}", color = Muted, fontSize = 9.sp, modifier = Modifier.width(30.dp)); Text(trade.side.name, color = if (trade.side.name == "LONG") Green else Red, fontWeight = FontWeight.Bold, modifier = Modifier.width(55.dp)); Column(Modifier.weight(1f)) { Text("${formatPrice(trade.entryPrice)} → ${formatPrice(trade.exitPrice)}", color = Color.White, fontSize = 10.sp); Text("Qty ${"%.5f".format(trade.quantity)} • Fee ${"%.4f".format(trade.fees)} • Funding ${"%.4f".format(trade.funding)}", color = Muted, fontSize = 8.sp) }; Text("%+.3f".format(trade.netPnl), color = if (trade.netPnl >= 0) Green else Red, fontWeight = FontWeight.Black, fontSize = 11.sp) } } } } }
-
 private fun formatPrice(value: Double): String = if (value >= 1000) "%,.2f".format(value) else if (value >= 1) "%.4f".format(value) else "%.8f".format(value)
 private fun compact(value: Double): String = when { value >= 1e9 -> "%.1fB".format(value / 1e9); value >= 1e6 -> "%.1fM".format(value / 1e6); value >= 1e3 -> "%.1fK".format(value / 1e3); else -> "%.0f".format(value) }
