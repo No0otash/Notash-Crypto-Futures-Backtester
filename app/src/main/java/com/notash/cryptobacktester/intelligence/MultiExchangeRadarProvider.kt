@@ -13,7 +13,7 @@ interface RadarMarketProvider {
     suspend fun snapshot(symbol: String): Result<RadarMarketSnapshot>
 }
 
-private abstract class JsonRadarProvider(
+abstract class JsonRadarProvider(
     final override val exchange: RadarExchange,
     private val client: OkHttpClient = OkHttpClient.Builder()
         .connectTimeout(8, TimeUnit.SECONDS).readTimeout(8, TimeUnit.SECONDS).build()
