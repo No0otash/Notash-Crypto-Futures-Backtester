@@ -4,7 +4,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import org.json.JSONArray
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
@@ -40,7 +39,7 @@ class BinanceRadarProvider : JsonRadarProvider(RadarExchange.BINANCE) {
         return RadarMarketSnapshot(exchange.displayName, symbol.uppercase(),
             o.getDouble("lastPrice"), o.getDouble("openPrice"), o.getDouble("highPrice"),
             o.getDouble("lowPrice"), o.getDouble("volume"), o.getDouble("quoteVolume"),
-            null, null, o.optDouble("openInterest", Double.NaN).takeUnless { it.isNaN() }, now)
+            null, null, null, now)
     }
 }
 
@@ -70,13 +69,15 @@ class OkxRadarProvider : JsonRadarProvider(RadarExchange.OKX) {
 class CoinExRadarProvider : JsonRadarProvider(RadarExchange.COINEX) {
     override fun requestUrl(symbol: String) = "https://api.coinex.com/v2/futures/ticker?market=${symbol.uppercase()}"
     override fun parse(symbol: String, body: String, now: Long): RadarMarketSnapshot {
-        val data = JSONObject(body).getJSONObject("data")
+        val root = JSONObject(body)
+        val raw = root.get("data")
+        val data = if (raw is org.json.JSONArray) raw.optJSONObject(0) ?: error("CoinEx returned no ticker") else raw as JSONObject
         return RadarMarketSnapshot(exchange.displayName, symbol.uppercase(),
             data.getDouble("last"), data.getDouble("open"), data.getDouble("high"), data.getDouble("low"),
             data.getDouble("volume"), data.optDouble("value", 0.0),
-            data.optDouble("buy_volume", Double.NaN).takeUnless { it.isNaN() },
-            data.optDouble("sell_volume", Double.NaN).takeUnless { it.isNaN() },
-            data.optDouble("open_interest", Double.NaN).takeUnless { it.isNaN() }, now)
+            data.optDouble("volume_buy", Double.NaN).takeUnless { it.isNaN() },
+            data.optDouble("volume_sell", Double.NaN).takeUnless { it.isNaN() },
+            data.optDouble("open_interest_size", Double.NaN).takeUnless { it.isNaN() }, now)
     }
 }
 
