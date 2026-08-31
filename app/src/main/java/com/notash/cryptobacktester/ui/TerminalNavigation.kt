@@ -4,8 +4,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.outlined.List
+import androidx.compose.material.icons.outlined.ShowChart
 import androidx.compose.material.icons.outlined.Star
+import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -26,15 +27,13 @@ fun TerminalNavigation(selected: TerminalPage, onSelected: (TerminalPage) -> Uni
     NavigationBar {
         val pages = listOf(
             TerminalPage.MARKET to Icons.Outlined.Home,
-            TerminalPage.MARKETS to Icons.Outlined.List,
+            TerminalPage.MARKETS to Icons.Outlined.ShowChart,
             TerminalPage.BACKTEST to Icons.Outlined.Build,
-            TerminalPage.STRATEGY to Icons.Outlined.List,
+            TerminalPage.STRATEGY to Icons.Outlined.Tune,
             TerminalPage.INTELLIGENCE to Icons.Outlined.Info,
             TerminalPage.AI to Icons.Outlined.Star
         )
-        pages.forEach { pair ->
-            val page = pair.first
-            val icon = pair.second
+        pages.forEach { (page, icon) ->
             NavigationBarItem(
                 selected = selected == page,
                 onClick = { onSelected(page) },
