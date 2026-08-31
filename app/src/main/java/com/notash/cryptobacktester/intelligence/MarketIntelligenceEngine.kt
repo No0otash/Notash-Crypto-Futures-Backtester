@@ -2,11 +2,12 @@ package com.notash.cryptobacktester.intelligence
 
 import com.notash.cryptobacktester.core.Candle
 
-/** Single orchestration layer for sections 11 and 12. Market data is supplied by the existing data layer. */
+/** Orchestration boundary for market, pump/dump and whale intelligence. */
 class MarketIntelligenceEngine(
     private val pumpDumpDetector: PumpDumpDetector = PumpDumpDetector(),
     private val whaleAnalyzer: WhaleSmartMoneyAnalyzer = WhaleSmartMoneyAnalyzer(),
-    private val whaleProvider: OnChainWhaleProvider = UnavailableOnChainWhaleProvider
+    private val whaleProvider: OnChainWhaleProvider = UnavailableOnChainWhaleProvider,
+    private val huntFloProvider: WhaleIntelligenceProvider = HuntFloTelegramProvider()
 ) {
     fun analyzePriceAndVolume(candles: List<Candle>): PumpDumpSignal? = pumpDumpDetector.analyze(candles)
 
@@ -14,6 +15,8 @@ class MarketIntelligenceEngine(
         val transfers = whaleProvider.getLargeTransfers(asset, from, until)
         return whaleAnalyzer.analyze(asset, transfers, from, until)
     }
+
+    suspend fun latestHuntFloWhaleEvents(limit: Int = 50): List<WhaleEvent> = huntFloProvider.latestEvents(limit)
 
     fun reset() = pumpDumpDetector.reset()
 }
