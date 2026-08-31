@@ -10,12 +10,15 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
+import com.notash.cryptobacktester.auth.SupabaseAuth
+import kotlinx.coroutines.launch
 
 private val LoginBg = Color(0xFF070A10)
 private val LoginPanel = Color(0xFF101722)
@@ -24,16 +27,22 @@ private val LoginMuted = Color(0xFF8B96A8)
 
 @Composable
 fun LoginGate() {
-    var loggedIn by rememberSaveable { mutableStateOf(false) }
-    if (loggedIn) ProfessionalTerminal() else LoginScreen { loggedIn = true }
+    val context = LocalContext.current
+    val auth = remember { SupabaseAuth(context) }
+    var loggedIn by rememberSaveable { mutableStateOf(auth.currentSession() != null) }
+    if (loggedIn) ProfessionalTerminal() else LoginScreen(auth) { loggedIn = true }
 }
 
 @Composable
-private fun LoginScreen(onLogin: () -> Unit) {
+private fun LoginScreen(auth: SupabaseAuth, onLogin: () -> Unit) {
+    val scope = rememberCoroutineScope()
     var email by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
-    var rememberMe by rememberSaveable { mutableStateOf(true) }
-    val valid = email.isNotBlank() && password.isNotBlank()
+    var loading by remember { mutableStateOf(false) }
+    var message by remember { mutableStateOf<String?>(null) }
+    var success by remember { mutableStateOf(false) }
+    val valid = email.isNotBlank() && password.length >= 6
+
     Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF0B1020), LoginBg, Color(0xFF05070B)))).padding(22.dp)) {
         Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
             Spacer(Modifier.height(55.dp))
@@ -45,21 +54,44 @@ private fun LoginScreen(onLogin: () -> Unit) {
             Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(28.dp), colors = CardDefaults.cardColors(containerColor = LoginPanel), elevation = CardDefaults.cardElevation(18.dp)) {
                 Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                     Text("ورود به فضای کاری", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-                    Text("حساب خود را برای دسترسی به ترمینال ALVEX وارد کنید", color = LoginMuted, fontSize = 13.sp)
-                    OutlinedTextField(email, { email = it }, Modifier.fillMaxWidth(), singleLine = true, label = { Text("Email / Username") }, shape = RoundedCornerShape(16.dp))
-                    OutlinedTextField(password, { password = it }, Modifier.fillMaxWidth(), singleLine = true, label = { Text("Password") }, leadingIcon = { Icon(Icons.Outlined.Lock, null) }, visualTransformation = PasswordVisualTransformation(), shape = RoundedCornerShape(16.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(checked = rememberMe, onCheckedChange = { rememberMe = it })
-                        Text("مرا به خاطر بسپار", color = LoginMuted, fontSize = 12.sp)
-                        Spacer(Modifier.weight(1f))
-                        Text("فراموشی رمز", color = LoginAccent, fontSize = 12.sp)
+                    Text("حساب ALVEX خود را وارد کنید", color = LoginMuted, fontSize = 13.sp)
+                    OutlinedTextField(email, { email = it }, Modifier.fillMaxWidth(), singleLine = true, label = { Text("Email") }, shape = RoundedCornerShape(16.dp))
+                    OutlinedTextField(password, { password = it }, Modifier.fillMaxWidth(), singleLine = true, label = { Text("Password (min 6) ") }, leadingIcon = { Icon(Icons.Outlined.Lock, null) }, visualTransformation = PasswordVisualTransformation(), shape = RoundedCornerShape(16.dp))
+                    message?.let { Text(it, color = if (success) LoginAccent else Color(0xFFFF6B7A), fontSize = 12.sp) }
+                    Button(onClick = {
+                        loading = true; message = null
+                        scope.launch {
+                            val r = auth.signIn(email, password)
+                            loading = false
+                            if (r.error == null) onLogin() else message = r.error
+                        }
+                    }, enabled = valid && !loading, modifier = Modifier.fillMaxWidth().height(54.dp), shape = RoundedCornerShape(16.dp), colors = ButtonDefaults.buttonColors(containerColor = LoginAccent)) {
+                        Text(if (loading) "در حال اتصال…" else "ورود به ALVEX", color = Color(0xFF06100F), fontWeight = FontWeight.ExtraBold)
                     }
-                    Button(onClick = onLogin, enabled = valid, modifier = Modifier.fillMaxWidth().height(54.dp), shape = RoundedCornerShape(16.dp), colors = ButtonDefaults.buttonColors(containerColor = LoginAccent)) { Text("ورود به ALVEX", color = Color(0xFF06100F), fontWeight = FontWeight.ExtraBold) }
-                    OutlinedButton(onClick = onLogin, modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(16.dp)) { Text("ورود آزمایشی / Demo", color = Color.White) }
+                    OutlinedButton(onClick = {
+                        loading = true; message = null
+                        scope.launch {
+                            val r = auth.signUp(email, password)
+                            loading = false
+                            if (r.error == null) {
+                                success = true
+                                if (r.value?.accessToken?.isNotBlank() == true) onLogin()
+                                else message = "حساب ساخته شد؛ ایمیل خود را برای تأیید بررسی کنید."
+                            } else message = r.error
+                        }
+                    }, enabled = valid && !loading, modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(16.dp)) { Text("ساخت حساب جدید", color = Color.White) }
+                    TextButton(enabled = email.isNotBlank() && !loading, onClick = {
+                        loading = true; message = null
+                        scope.launch {
+                            val r = auth.sendPasswordReset(email)
+                            loading = false; success = r.error == null
+                            message = r.error ?: "ایمیل بازیابی رمز ارسال شد."
+                        }
+                    }) { Text("فراموشی رمز عبور", color = LoginAccent) }
                 }
             }
             Spacer(Modifier.weight(1f))
-            Text("SECURE WORKSPACE • MARKET DATA • STRATEGY LAB", color = Color(0xFF647083), fontSize = 9.sp, letterSpacing = 1.2.sp)
+            Text("SECURE WORKSPACE • SUPABASE AUTH • MARKET DATA", color = Color(0xFF647083), fontSize = 9.sp, letterSpacing = 1.2.sp)
             Spacer(Modifier.height(14.dp))
         }
     }
