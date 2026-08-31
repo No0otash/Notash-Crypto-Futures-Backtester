@@ -47,3 +47,52 @@ Before a UI/product milestone is declared complete:
 
 ## Relationship to the 119-item work order
 The 119-item registry remains the feature-level checklist. This document defines the global product shell, quality bar, branding and UX architecture that all 119 items must fit into.
+
+---
+
+# ALVEX UI/UX REFERENCE DESIGN — MANDATORY UPDATE
+
+The visual concept supplied during the ALVEX project is now a permanent design target for the application. It is documented in `ALVEX_UI_REFERENCE_DESIGN.md` and must be used together with this work order and the 119-item registry.
+
+## Mandatory visual target
+
+The app must evolve toward a premium, world-class crypto-finance terminal with the same **level of information hierarchy, density, polish, navigation quality and functional richness** represented by the approved ALVEX concept. The concept is a target for ALVEX; it is not a claim that the current APK already implements every screen shown.
+
+Required screen family:
+
+1. **ALVEX Login** — dedicated logo/icon, professional authentication, validation and real session behavior.
+2. **Home / Dashboard** — AI icon physically at the upper-left, Settings physically at the upper-right, market overview, AI-selected Pump/Dump candidates, recent pump/dump activity and professional discovery sections.
+3. **Markets** — exchange-grade market list with search, favorites, sorting, filtering, prices, movement, volume and timestamps.
+4. **Trading / Chart** — real candlesticks, timeframe controls, touch inspection, OHLC, volume where available, Long/Short markers, Entry/Exit, SL/TP and position lifecycle.
+5. **AI Market Radar** — explainable alerts with severity, confidence, timestamp and drill-down evidence.
+6. **Whale Intelligence** — Inflow/Outflow/Wallet views, source, timestamp, amount/value where known, classification and confidence. HuntFlo is the intended Telegram intelligence source for whale/news activity; price-only messages are not required as the whale source.
+7. **Pump / Dump Radar** — ranked opportunities/risks based on measurable signals and AI interpretation, never guaranteed predictions.
+8. **Meme / Shitcoin Scanner** — high-risk asset discovery, filters, liquidity/volume/age, holder concentration, tokenomics/unlock risk, security indicators where supported and meaningful risk scoring.
+9. **Coin Intelligence** — unified Market, Pump/Dump, Whale, Meme/Risk, Project, Team/Investors, Roadmap, Tokenomics, Unlock/Vesting/Burn/Emission and On-chain information.
+10. **Tokenomics** — actual supply/allocation/unlock information with meaningful visualizations.
+11. **AI Backtest Analyst** — actual backtest data, trade-by-trade diagnosis, profit/loss causes, SL/TP behavior, fees/funding and strategy-improvement recommendations.
+12. **Settings** — Profile, Security, Notifications, Privacy, Support, Share, Language, Theme, Data Providers and AI Provider, all functional.
+
+## Visual and interaction rules
+
+- ALVEX logo and dedicated adaptive app icon are mandatory.
+- No old Notash branding in user-facing application UI.
+- Premium dark theme plus complete light/system theme.
+- Purpose-designed icons for major sections.
+- Professional cards, compact financial rows, hierarchy, typography, spacing and motion.
+- Loading, skeleton, empty, offline, error and success states must exist for data-driven screens.
+- Responsive Android layouts; no device-specific hard-coded layout assumptions.
+- Persian/Arabic RTL must work without breaking the physical AI-left / Settings-right requirement.
+- English is the source language; Persian, Arabic, French and Chinese must be supported.
+- No decorative-only controls.
+- No fabricated market, whale, project, AI, investor, tokenomics or on-chain data.
+
+## Functional definition of done
+
+A screen is not complete merely because it resembles the reference. It is complete only when navigation, primary controls, data/provider integration, loading/error/empty/offline states, localization, accessibility basics and critical tests work, and the Android build succeeds.
+
+## Preservation rule
+
+This update does **not** authorize deletion of existing application functionality. Existing working features must be preserved and upgraded. Refactoring is allowed only when it improves reliability, architecture, usability, performance or visual quality.
+
+**Canonical companion:** `ALVEX_UI_REFERENCE_DESIGN.md`
