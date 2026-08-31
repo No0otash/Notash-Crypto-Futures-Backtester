@@ -1,14 +1,14 @@
 package com.notash.cryptobacktester.ui
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.AutoGraph
+import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.Psychology
-import androidx.compose.material.icons.outlined.ShowChart
-import androidx.compose.material.icons.outlined.Science
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.List
+import androidx.compose.material.icons.outlined.Star
+import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 
@@ -26,13 +26,15 @@ fun TerminalNavigation(selected: TerminalPage, onSelected: (TerminalPage) -> Uni
     NavigationBar {
         val pages = listOf(
             TerminalPage.MARKET to Icons.Outlined.Home,
-            TerminalPage.MARKETS to Icons.Outlined.ShowChart,
-            TerminalPage.BACKTEST to Icons.Outlined.AutoGraph,
-            TerminalPage.STRATEGY to Icons.Outlined.Science,
-            TerminalPage.INTELLIGENCE to Icons.Outlined.Psychology,
-            TerminalPage.AI to Icons.Outlined.Psychology
+            TerminalPage.MARKETS to Icons.Outlined.List,
+            TerminalPage.BACKTEST to Icons.Outlined.Build,
+            TerminalPage.STRATEGY to Icons.Outlined.List,
+            TerminalPage.INTELLIGENCE to Icons.Outlined.Info,
+            TerminalPage.AI to Icons.Outlined.Star
         )
-        pages.forEach { (page, icon) ->
+        pages.forEach { pair ->
+            val page = pair.first
+            val icon = pair.second
             NavigationBarItem(
                 selected = selected == page,
                 onClick = { onSelected(page) },
