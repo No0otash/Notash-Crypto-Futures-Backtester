@@ -7,7 +7,6 @@ plugins {
 android {
     namespace = "com.notash.cryptobacktester"
     compileSdk = 35
-
     defaultConfig {
         applicationId = "com.notash.cryptobacktester"
         minSdk = 26
@@ -15,31 +14,15 @@ android {
         versionCode = 11
         versionName = "2.0.0"
     }
-
     buildTypes {
-        release {
-            isMinifyEnabled = false
-            isShrinkResources = false
-        }
-        debug {
-            applicationIdSuffix = ".debug"
-            versionNameSuffix = "-debug"
-        }
+        release { isMinifyEnabled = false; isShrinkResources = false }
+        debug { applicationIdSuffix = ".debug"; versionNameSuffix = "-debug" }
     }
-
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
-    }
-
-    kotlinOptions {
-        jvmTarget = "17"
-    }
+    compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
+    kotlinOptions { jvmTarget = "17" }
 }
 
-kotlin {
-    jvmToolchain(17)
-}
+kotlin { jvmToolchain(17) }
 
 dependencies {
     implementation("androidx.core:core-ktx:1.15.0")
@@ -50,7 +33,7 @@ dependencies {
     implementation("androidx.compose.ui:ui:1.7.8")
     implementation("androidx.compose.ui:ui-tooling-preview:1.7.8")
     implementation("androidx.compose.material3:material3:1.3.1")
-    implementation("androidx.compose.material:material-icons-extended:1.7.8")
+    implementation("androidx.compose.material:material-icons-core:1.7.8")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
