@@ -23,7 +23,7 @@ class RobotPackageImporter {
                 action = r.string("action")
             )
         }
-        val parameters = root.object("parameters")?.mapValues { (_, value) -> value.asDouble() } ?: emptyMap()
+        val parameters = root.jsonObjectOrNull("parameters")?.mapValues { (_, value) -> value.asDouble() } ?: emptyMap()
 
         RobotPackage(
             schemaVersion = root.int("schemaVersion", 1),
@@ -48,7 +48,7 @@ class RobotPackageImporter {
 
     private fun JsonObject.int(key: String, default: Int): Int = get(key)?.asDouble()?.toInt() ?: default
     private fun JsonObject.double(key: String): Double = get(key)?.asDouble() ?: error("Missing required field: $key")
-    private fun JsonObject.object(key: String): JsonObject? = get(key)?.jsonObject
+    private fun JsonObject.jsonObjectOrNull(key: String): JsonObject? = get(key)?.jsonObject
 
     private fun JsonObject.arrayObjects(key: String): List<JsonObject> =
         get(key)?.jsonArray?.map { it.jsonObject } ?: emptyList()
