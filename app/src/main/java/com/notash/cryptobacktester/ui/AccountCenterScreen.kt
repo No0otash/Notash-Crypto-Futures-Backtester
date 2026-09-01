@@ -72,8 +72,8 @@ fun AccountCenterScreen(onContinue: () -> Unit, onSignedOut: () -> Unit) {
                     }, modifier = Modifier.fillMaxWidth()) { Text("Send password reset email") }
                     OutlinedButton(enabled = !busy, onClick = {
                         busy = true
-                        scope.launch { auth.signOut(global = true); busy = false; onSignedOut() }
-                    }, modifier = Modifier.fillMaxWidth()) { Text("Sign out all sessions") }
+                        scope.launch { val r = auth.signOut(); busy = false; if (r.error == null) onSignedOut() else message = r.error }
+                    }, modifier = Modifier.fillMaxWidth()) { Text("Sign out") }
                 }
             }
         }
