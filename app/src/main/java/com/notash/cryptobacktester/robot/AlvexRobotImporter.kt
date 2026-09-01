@@ -1,37 +1,63 @@
 package com.notash.cryptobacktester.robot
 
-import org.json.JSONObject
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.doubleOrNull
+import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
 object AlvexRobotImporter {
+    private val parser = Json { ignoreUnknownKeys = true; isLenient = false }
+
     fun fromJson(json: String): AlvexRobotPackage {
-        val root = JSONObject(json)
-        require(root.optInt("schemaVersion", 1) == 1) { "Unsupported robot schemaVersion" }
-        val id = root.optString("id").trim()
-        val name = root.optString("name").trim()
-        require(id.isNotEmpty()) { "Robot id is required" }
-        require(name.isNotEmpty()) { "Robot name is required" }
-        val p = root.optJSONObject("parameters") ?: JSONObject()
-        val r = root.optJSONObject("rules") ?: JSONObject()
-        val parameters = RobotParameters(
-            leverage = p.optDouble("leverage", 1.0),
-            riskPercent = p.optDouble("riskPercent", 1.0),
-            stopLossPercent = p.optDouble("stopLossPercent", 1.0),
-            takeProfitPercent = p.optDouble("takeProfitPercent", 2.0)
+        val root = parser.parseToJsonElement(json).jsonObject
+        val schemaVersion = root["schemaVersion"]?.jsonPrimitive?.intOrNull ?: 1
+        require(schemaVersion == 1) { "Unsupported robot schemaVersion: $schemaVersion" }
+
+        val id = root.requiredString("id")
+        val name = root.requiredString("name")
+        val parameters = root["parameters"]?.jsonObject ?: JsonObject(emptyMap())
+        val rules = root["rules"]?.jsonObject ?: JsonObject(emptyMap())
+
+        val robotParameters = RobotParameters(
+            leverage = parameters.number("leverage", 1.0),
+            riskPercent = parameters.number("riskPercent", 1.0),
+            stopLossPercent = parameters.number("stopLossPercent", 1.0),
+            takeProfitPercent = parameters.number("takeProfitPercent", 2.0)
         )
-        require(parameters.leverage > 0) { "leverage must be > 0" }
-        require(parameters.riskPercent > 0) { "riskPercent must be > 0" }
-        require(parameters.stopLossPercent > 0) { "stopLossPercent must be > 0" }
-        require(parameters.takeProfitPercent > 0) { "takeProfitPercent must be > 0" }
+        require(robotParameters.leverage > 0.0) { "leverage must be > 0" }
+        require(robotParameters.riskPercent > 0.0) { "riskPercent must be > 0" }
+        require(robotParameters.stopLossPercent > 0.0) { "stopLossPercent must be > 0" }
+        require(robotParameters.takeProfitPercent > 0.0) { "takeProfitPercent must be > 0" }
+
         return AlvexRobotPackage(
             id = id,
             name = name,
-            version = root.optString("version", "1.0.0"),
-            description = root.optString("description", ""),
-            parameters = parameters,
+            version = root.string("version", "1.0.0"),
+            description = root.string("description", ""),
+            parameters = robotParameters,
             rules = RobotRules(
-                longWhenCloseAboveOpen = r.optBoolean("longWhenCloseAboveOpen", true),
-                shortWhenCloseBelowOpen = r.optBoolean("shortWhenCloseBelowOpen", true)
+                longWhenCloseAboveOpen = rules.boolean("longWhenCloseAboveOpen", true),
+                shortWhenCloseBelowOpen = rules.boolean("shortWhenCloseBelowOpen", true)
             )
         )
     }
+
+    private fun JsonObject.requiredString(key: String): String = string(key, "").also {
+        require(it.isNotBlank()) { "$key is required" }
+    }
+
+    private fun JsonObject.string(key: String, default: String): String =
+        this[key]?.jsonPrimitive?.contentOrNull ?: default
+
+    private fun JsonObject.number(key: String, default: Double): Double =
+        this[key]?.jsonPrimitive?.doubleOrNull ?: default
+
+    private fun JsonObject.boolean(key: String, default: Boolean): Boolean =
+        this[key]?.jsonPrimitive?.booleanOrNull ?: default
+
+    private val kotlinx.serialization.json.JsonPrimitive.contentOrNull: String?
+        get() = if (isString) content else content
 }
