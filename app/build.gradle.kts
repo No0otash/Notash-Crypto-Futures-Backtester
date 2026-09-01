@@ -16,9 +16,17 @@ android {
         versionCode = 11
         versionName = "2.0.0"
     }
+    buildFeatures { buildConfig = true }
     buildTypes {
         release { isMinifyEnabled = false; isShrinkResources = false }
         debug { applicationIdSuffix = ".debug"; versionNameSuffix = "-debug" }
+    }
+    // Keys are injected at build time. Never commit real credentials.
+    buildTypes.all {
+        val moralisKey = providers.environmentVariable("MORALIS_API_KEY").orNull ?: ""
+        val tokenomistKey = providers.environmentVariable("TOKENOMIST_API_KEY").orNull ?: ""
+        buildConfigField("String", "MORALIS_API_KEY", "\"${moralisKey.replace("\\", "\\\\").replace("\"", "\\\"")}\"")
+        buildConfigField("String", "TOKENOMIST_API_KEY", "\"${tokenomistKey.replace("\\", "\\\\").replace("\"", "\\\"")}\"")
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
