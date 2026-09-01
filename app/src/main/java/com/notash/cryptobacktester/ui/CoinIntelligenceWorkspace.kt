@@ -34,11 +34,7 @@ data class CoinIntelligenceRuntimeState(
     val pumpDump: PumpDumpSignal? = null
 )
 
-/**
- * Live Coin Intelligence surface. It uses real exchange candles and intentionally marks
- * project/tokenomics/on-chain/team/investor data unavailable until their verified providers
- * supply those inputs. No placeholder values are treated as facts.
- */
+/** Live, truthful Coin Intelligence surface. Missing provider data is shown as unavailable. */
 @Composable
 fun CoinIntelligenceWorkspace(
     persian: Boolean,
@@ -54,29 +50,24 @@ fun CoinIntelligenceWorkspace(
             val result = runCatching {
                 val candles = repository.loadKlines(market, "15min", 160)
                 require(candles.isNotEmpty()) { "No market candles returned" }
-                val ticker = repository.loadLatestTicker(market)
+                val ticker = requireNotNull(repository.loadLatestTicker(market)) { "Live market ticker unavailable" }
                 val baseSymbol = market.removeSuffix("USDT").removeSuffix("USD").ifBlank { market }
                 val snapshot = MemeCoinSnapshot(
                     symbol = baseSymbol,
                     market = market,
-                    liquidityUsd = 0.0, // unknown: CoinEx ticker is not a verified liquidity source
-                    marketCapUsd = 0.0, // unknown: exchange ticker does not provide market cap
+                    liquidityUsd = 0.0,
+                    marketCapUsd = 0.0,
                     holderConcentrationPercent = null,
                     contractVerified = null
                 )
-                val report = CoinIntelligenceEngine().analyze(
-                    CoinIntelligenceInput(snapshot = snapshot, candles = candles)
-                )
+                val report = CoinIntelligenceEngine().analyze(CoinIntelligenceInput(snapshot = snapshot, candles = candles))
                 val presented = CoinIntelligencePresenter.present(report, ticker.timestamp)
                 Triple(presented, PumpDumpDetector().analyze(candles), ticker.timestamp)
             }
             result.onSuccess { (ui, pumpDump, _) ->
                 state = CoinIntelligenceRuntimeState(loading = false, ui = ui, pumpDump = pumpDump)
             }.onFailure { throwable ->
-                state = CoinIntelligenceRuntimeState(
-                    loading = false,
-                    error = throwable.message ?: "Market intelligence unavailable"
-                )
+                state = CoinIntelligenceRuntimeState(loading = false, error = throwable.message ?: "Market intelligence unavailable")
             }
         }
     }
@@ -104,7 +95,6 @@ fun CoinIntelligenceWorkspace(
                 )
             }
         }
-
         item {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(market, color = Color.White, fontSize = 25.sp, fontWeight = FontWeight.Black, modifier = Modifier.weight(1f))
@@ -113,7 +103,6 @@ fun CoinIntelligenceWorkspace(
                 }
             }
         }
-
         state.error?.let { message ->
             item {
                 Card(colors = CardDefaults.cardColors(containerColor = IntelRed.copy(alpha = .10f)), shape = RoundedCornerShape(18.dp)) {
@@ -121,11 +110,7 @@ fun CoinIntelligenceWorkspace(
                 }
             }
         }
-
-        if (state.loading && state.ui == null) {
-            item { LinearProgressIndicator(modifier = Modifier.fillMaxWidth()) }
-        }
-
+        if (state.loading && state.ui == null) item { LinearProgressIndicator(modifier = Modifier.fillMaxWidth()) }
         state.ui?.let { ui ->
             item {
                 Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = IntelPanel)) {
@@ -147,14 +132,12 @@ fun CoinIntelligenceWorkspace(
                     }
                 }
             }
-
             item {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     IntelMetric(if (persian) "ریسک" else "Risk", ui.riskLabel, IntelRed, Modifier.weight(1f))
                     IntelMetric(if (persian) "فرصت" else "Opportunity", ui.opportunityLabel, IntelGreen, Modifier.weight(1f))
                 }
             }
-
             state.pumpDump?.let { signal ->
                 item {
                     Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = IntelPanel)) {
@@ -166,10 +149,8 @@ fun CoinIntelligenceWorkspace(
                     }
                 }
             }
-
             item { IntelHeading(if (persian) "مولفه‌های امتیاز" else "Score components") }
             items(ui.componentLabels) { label -> IntelLine(label, Color.White) }
-
             if (ui.gapLabels.isNotEmpty()) {
                 item { IntelHeading(if (persian) "شکاف داده" else "Data gaps") }
                 items(ui.gapLabels) { label -> IntelLine(label, IntelGold) }
@@ -181,7 +162,6 @@ fun CoinIntelligenceWorkspace(
                     )
                 }
             }
-
             if (ui.warningLabels.isNotEmpty()) {
                 item { IntelHeading(if (persian) "هشدارها" else "Warnings") }
                 items(ui.warningLabels.distinct()) { label -> IntelLine(label, IntelRed) }
@@ -200,10 +180,7 @@ private fun IntelMetric(label: String, value: String, valueColor: Color, modifie
     }
 }
 
-@Composable
-private fun IntelHeading(text: String) {
-    Text(text, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Black)
-}
+@Composable private fun IntelHeading(text: String) { Text(text, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Black) }
 
 @Composable
 private fun IntelLine(text: String, color: Color) {
