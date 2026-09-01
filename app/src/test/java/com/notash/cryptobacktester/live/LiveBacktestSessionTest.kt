@@ -3,6 +3,7 @@ package com.notash.cryptobacktester.live
 import com.notash.cryptobacktester.core.BacktestConfig
 import com.notash.cryptobacktester.core.Candle
 import com.notash.cryptobacktester.robot.AlvexRobotImporter
+import com.notash.cryptobacktester.robot.AlvexRobotStrategy
 import kotlin.test.Test
 import kotlin.test.assertTrue
 import kotlinx.coroutines.runBlocking
@@ -15,7 +16,7 @@ class LiveBacktestSessionTest {
             val close = 100.0 + i
             Candle(i.toLong(), close - 0.5, close + 1.0, close - 1.0, close, 1000.0)
         }
-        val report = LiveBacktestSession().simulate(robot.let(::com.notash.cryptobacktester.robot.AlvexRobotStrategy), candles, config = BacktestConfig())
+        val report = LiveBacktestSession().simulate(AlvexRobotStrategy(robot), candles, config = BacktestConfig())
         assertTrue(report.equityCurve.isNotEmpty())
     }
 }
