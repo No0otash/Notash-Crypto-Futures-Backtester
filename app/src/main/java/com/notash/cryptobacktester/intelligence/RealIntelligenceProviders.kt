@@ -11,7 +11,6 @@ import java.io.IOException
 import java.util.concurrent.TimeUnit
 
 data class ProviderHealth(val provider: String, val ok: Boolean, val statusCode: Int? = null, val error: String? = null, val observedAtEpochMs: Long = System.currentTimeMillis())
-
 data class ProjectProviderResult(val profile: ProjectProfile, val product: ProductAnalysis, val development: DevelopmentActivity, val health: List<ProviderHealth>)
 data class TokenomicsProviderResult(val supply: TokenSupply, val health: List<ProviderHealth>)
 data class OnChainProviderResult(val snapshot: HolderSnapshot, val networkMetrics: Map<String, Double?>, val health: List<ProviderHealth>)
@@ -20,7 +19,7 @@ interface ProjectDataProvider { suspend fun load(projectId: String, githubRepo: 
 interface TokenomicsDataProvider { suspend fun load(assetId: String): TokenomicsProviderResult }
 interface OnChainDataProvider { suspend fun load(asset: String): OnChainProviderResult }
 
-internal class HttpJsonClient(
+class HttpJsonClient(
     private val client: OkHttpClient = OkHttpClient.Builder()
         .connectTimeout(8, TimeUnit.SECONDS).readTimeout(10, TimeUnit.SECONDS).callTimeout(15, TimeUnit.SECONDS).build()
 ) {
