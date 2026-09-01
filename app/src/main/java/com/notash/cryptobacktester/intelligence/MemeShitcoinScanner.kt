@@ -51,7 +51,7 @@ class MemeShitcoinScanner(private val baselinePeriods: Int = 20) {
         }.average().takeIf { it.isFinite() } ?: 0.0
         var risk = 0.0
         val flags = mutableListOf<String>()
-        if (snapshot.liquidityUsd < 100_000.0) { risk += 25.0; flags += "LOW_LIQUIDITY" }
+        if (snapshot.liquidityUsd > 0.0 && snapshot.liquidityUsd < 100_000.0) { risk += 25.0; flags += "LOW_LIQUIDITY" }
         if (snapshot.marketCapUsd in 0.0..5_000_000.0 && snapshot.marketCapUsd > 0.0) { risk += 20.0; flags += "MICRO_CAP" }
         if (snapshot.ageDays in 1..30) { risk += 15.0; flags += "NEW_TOKEN" }
         if (snapshot.holderConcentrationPercent != null && snapshot.holderConcentrationPercent >= 60.0) { risk += 20.0; flags += "HIGH_HOLDER_CONCENTRATION" }
