@@ -12,15 +12,8 @@ import kotlin.math.abs
 import kotlin.math.max
 
 class BacktestEngine {
-
-    fun run(
-        candles: List<Candle>,
-        funding: List<FundingRate>,
-        strategy: com.notash.cryptobacktester.strategy.Strategy,
-        config: BacktestConfig
-    ): BacktestReport {
+    fun run(candles: List<Candle>, funding: List<FundingRate>, strategy: com.notash.cryptobacktester.strategy.Strategy, config: BacktestConfig): BacktestReport {
         require(candles.size >= 10) { "Not enough candle data." }
-
         var balance = config.initialBalance
         var position: Position? = null
         var pendingSignal: com.notash.cryptobacktester.core.Signal? = null
@@ -33,40 +26,16 @@ class BacktestEngine {
 
         for (i in candles.indices) {
             val candle = candles[i]
-
             if (position == null && pendingSignal != null) {
                 val signal = pendingSignal!!
-                val filled = when (signal.side) {
-                    Side.LONG -> candle.low <= signal.entryPrice
-                    Side.SHORT -> candle.high >= signal.entryPrice
-                }
-
+                val filled = when (signal.side) { Side.LONG -> candle.low <= signal.entryPrice; Side.SHORT -> candle.high >= signal.entryPrice }
                 if (filled) {
-                    val quantity = calculatePositionSize(
-                        balance = balance,
-                        entry = signal.entryPrice,
-                        stop = signal.stopLoss,
-                        config = config
-                    )
-
+                    val quantity = calculatePositionSize(balance, signal.entryPrice, signal.stopLoss, config)
                     if (quantity > 0.0) {
                         val entryPrice = applyEntrySlippage(signal.entryPrice, signal.side, config)
-                        val entryFeeRate = when (signal.orderType) {
-                            OrderType.LIMIT -> config.makerFee
-                            OrderType.MARKET -> config.takerFee
-                        }
+                        val entryFeeRate = when (signal.orderType) { OrderType.LIMIT -> config.makerFee; OrderType.MARKET -> config.takerFee }
                         val entryFee = abs(entryPrice * quantity) * entryFeeRate
-
-                        position = Position(
-                            side = signal.side,
-                            entryPrice = entryPrice,
-                            quantity = quantity,
-                            stopLoss = signal.stopLoss,
-                            takeProfit = signal.takeProfit,
-                            entryTime = candle.timestamp,
-                            entryFee = entryFee
-                        )
-
+                        position = Position(signal.side, entryPrice, quantity, signal.stopLoss, signal.takeProfit, candle.timestamp, entryFee)
                         balance -= entryFee
                         totalFees += entryFee
                     }
@@ -81,205 +50,78 @@ class BacktestEngine {
                     val exitPrice = applyExitSlippage(exit, currentPosition.side, config)
                     val grossPnl = calculatePnl(currentPosition, exitPrice)
                     val exitFee = abs(exitPrice * currentPosition.quantity) * config.takerFee
-                    val fundingCost = calculateFunding(
-                        position = currentPosition,
-                        funding = funding,
-                        exitTimestamp = candle.timestamp,
-                        config = config
-                    )
+                    val fundingCost = calculateFunding(currentPosition, funding, candle.timestamp, config)
                     val totalTradeFees = currentPosition.entryFee + exitFee
                     val netPnl = grossPnl - totalTradeFees - fundingCost
-
                     balance += grossPnl - exitFee - fundingCost
                     totalFees += exitFee
                     totalFunding += fundingCost
-
-                    trades += TradeResult(
-                        side = currentPosition.side,
-                        entryPrice = currentPosition.entryPrice,
-                        exitPrice = exitPrice,
-                        quantity = currentPosition.quantity,
-                        grossPnl = grossPnl,
-                        fees = totalTradeFees,
-                        funding = fundingCost,
-                        netPnl = netPnl,
-                        entryTime = currentPosition.entryTime,
-                        exitTime = candle.timestamp
-                    )
+                    val reason = when {
+                        currentPosition.side == Side.LONG && candle.low <= currentPosition.stopLoss -> "SL"
+                        currentPosition.side == Side.LONG && candle.high >= currentPosition.takeProfit -> "TP"
+                        currentPosition.side == Side.SHORT && candle.high >= currentPosition.stopLoss -> "SL"
+                        currentPosition.side == Side.SHORT && candle.low <= currentPosition.takeProfit -> "TP"
+                        else -> "Unknown"
+                    }
+                    trades += TradeResult(currentPosition.side, currentPosition.entryPrice, exitPrice, currentPosition.quantity, grossPnl, totalTradeFees, fundingCost, netPnl, currentPosition.entryTime, candle.timestamp, currentPosition.stopLoss, currentPosition.takeProfit, reason)
                     position = null
                 }
             }
 
             if (position == null && pendingSignal == null) {
-                val signal = strategy.generateSignal(
-                    index = i,
-                    candles = candles,
-                    funding = funding,
-                    config = config
-                )
-                if (signal != null && signal.orderType == OrderType.LIMIT) {
-                    pendingSignal = signal
-                }
+                val signal = strategy.generateSignal(i, candles, funding, config)
+                if (signal != null && signal.orderType == OrderType.LIMIT) pendingSignal = signal
             }
-
             val unrealized = position?.let { calculatePnl(it, candle.close) } ?: 0.0
             val equity = balance + unrealized
             equityCurve += equity
             peakEquity = max(peakEquity, equity)
-            if (peakEquity > 0.0) {
-                maxDrawdown = max(maxDrawdown, ((peakEquity - equity) / peakEquity) * 100.0)
-            }
+            if (peakEquity > 0.0) maxDrawdown = max(maxDrawdown, ((peakEquity - equity) / peakEquity) * 100.0)
         }
 
         if (position != null) {
-            val lastCandle = candles.last()
-            val finalPosition = position!!
+            val lastCandle = candles.last(); val finalPosition = position!!
             val exitPrice = applyExitSlippage(lastCandle.close, finalPosition.side, config)
             val grossPnl = calculatePnl(finalPosition, exitPrice)
             val exitFee = abs(exitPrice * finalPosition.quantity) * config.takerFee
-            val fundingCost = calculateFunding(
-                position = finalPosition,
-                funding = funding,
-                exitTimestamp = lastCandle.timestamp,
-                config = config
-            )
+            val fundingCost = calculateFunding(finalPosition, funding, lastCandle.timestamp, config)
             val totalTradeFees = finalPosition.entryFee + exitFee
             val netPnl = grossPnl - totalTradeFees - fundingCost
-
             balance += grossPnl - exitFee - fundingCost
-            totalFees += exitFee
-            totalFunding += fundingCost
-
-            trades += TradeResult(
-                side = finalPosition.side,
-                entryPrice = finalPosition.entryPrice,
-                exitPrice = exitPrice,
-                quantity = finalPosition.quantity,
-                grossPnl = grossPnl,
-                fees = totalTradeFees,
-                funding = fundingCost,
-                netPnl = netPnl,
-                entryTime = finalPosition.entryTime,
-                exitTime = lastCandle.timestamp
-            )
-
-            if (equityCurve.isNotEmpty()) {
-                equityCurve[equityCurve.lastIndex] = balance
-            }
+            totalFees += exitFee; totalFunding += fundingCost
+            trades += TradeResult(finalPosition.side, finalPosition.entryPrice, exitPrice, finalPosition.quantity, grossPnl, totalTradeFees, fundingCost, netPnl, finalPosition.entryTime, lastCandle.timestamp, finalPosition.stopLoss, finalPosition.takeProfit, "End of data")
+            if (equityCurve.isNotEmpty()) equityCurve[equityCurve.lastIndex] = balance
             peakEquity = max(peakEquity, balance)
-            if (peakEquity > 0.0) {
-                maxDrawdown = max(maxDrawdown, ((peakEquity - balance) / peakEquity) * 100.0)
-            }
+            if (peakEquity > 0.0) maxDrawdown = max(maxDrawdown, ((peakEquity - balance) / peakEquity) * 100.0)
         }
 
         val netPnl = balance - config.initialBalance
-        val roi = if (config.initialBalance != 0.0) {
-            netPnl / config.initialBalance * 100.0
-        } else 0.0
-
+        val roi = if (config.initialBalance != 0.0) netPnl / config.initialBalance * 100.0 else 0.0
         val wins = trades.count { it.netPnl > 0.0 }
         val winRate = if (trades.isNotEmpty()) wins.toDouble() / trades.size * 100.0 else 0.0
         val grossProfit = trades.filter { it.netPnl > 0.0 }.sumOf { it.netPnl }
         val grossLoss = trades.filter { it.netPnl < 0.0 }.sumOf { abs(it.netPnl) }
-        val profitFactor = when {
-            grossLoss > 0.0 -> grossProfit / grossLoss
-            grossProfit > 0.0 -> Double.POSITIVE_INFINITY
-            else -> 0.0
-        }
-
-        return BacktestReport(
-            initialBalance = config.initialBalance,
-            finalBalance = balance,
-            netPnl = netPnl,
-            roiPercent = roi,
-            maxDrawdownPercent = maxDrawdown,
-            winRatePercent = winRate,
-            profitFactor = profitFactor,
-            totalFees = totalFees,
-            totalFunding = totalFunding,
-            trades = trades,
-            equityCurve = equityCurve
-        )
+        val profitFactor = when { grossLoss > 0.0 -> grossProfit / grossLoss; grossProfit > 0.0 -> Double.POSITIVE_INFINITY; else -> 0.0 }
+        return BacktestReport(config.initialBalance, balance, netPnl, roi, maxDrawdown, winRate, profitFactor, totalFees, totalFunding, trades, equityCurve)
     }
 
-    private fun calculatePositionSize(
-        balance: Double,
-        entry: Double,
-        stop: Double,
-        config: BacktestConfig
-    ): Double {
-        val riskAmount = balance * config.riskPercent / 100.0
-        val stopDistance = abs(entry - stop)
+    private fun calculatePositionSize(balance: Double, entry: Double, stop: Double, config: BacktestConfig): Double {
+        val riskAmount = balance * config.riskPercent / 100.0; val stopDistance = abs(entry - stop)
         if (riskAmount <= 0.0 || stopDistance <= 0.0 || entry <= 0.0) return 0.0
-        val quantityByRisk = riskAmount / stopDistance
-        val maxNotional = balance * config.leverage
-        val quantityByMargin = maxNotional / entry
-        return minOf(quantityByRisk, quantityByMargin)
+        return minOf(riskAmount / stopDistance, (balance * config.leverage) / entry)
     }
-
-    private fun calculatePnl(position: Position, exitPrice: Double): Double {
-        val priceDifference = when (position.side) {
-            Side.LONG -> exitPrice - position.entryPrice
-            Side.SHORT -> position.entryPrice - exitPrice
-        }
-        return priceDifference * position.quantity
-    }
-
-    private fun checkExit(position: Position, candle: Candle): Double? {
-        return when (position.side) {
-            Side.LONG -> when {
-                candle.low <= position.stopLoss -> position.stopLoss
-                candle.high >= position.takeProfit -> position.takeProfit
-                else -> null
-            }
-            Side.SHORT -> when {
-                candle.high >= position.stopLoss -> position.stopLoss
-                candle.low <= position.takeProfit -> position.takeProfit
-                else -> null
-            }
-        }
-    }
-
-    private fun applyEntrySlippage(price: Double, side: Side, config: BacktestConfig): Double {
-        val factor = config.slippageBps / 10000.0
-        return when (side) {
-            Side.LONG -> price * (1.0 + factor)
-            Side.SHORT -> price * (1.0 - factor)
-        }
-    }
-
-    private fun applyExitSlippage(price: Double, side: Side, config: BacktestConfig): Double {
-        val factor = config.slippageBps / 10000.0
-        return when (side) {
-            Side.LONG -> price * (1.0 - factor)
-            Side.SHORT -> price * (1.0 + factor)
-        }
-    }
-
-    private fun calculateFunding(
-        position: Position,
-        funding: List<FundingRate>,
-        exitTimestamp: Long,
-        config: BacktestConfig
-    ): Double {
+    private fun calculatePnl(position: Position, exitPrice: Double): Double = when (position.side) { Side.LONG -> (exitPrice - position.entryPrice) * position.quantity; Side.SHORT -> (position.entryPrice - exitPrice) * position.quantity }
+    private fun checkExit(position: Position, candle: Candle): Double? = when (position.side) { Side.LONG -> when { candle.low <= position.stopLoss -> position.stopLoss; candle.high >= position.takeProfit -> position.takeProfit; else -> null }; Side.SHORT -> when { candle.high >= position.stopLoss -> position.stopLoss; candle.low <= position.takeProfit -> position.takeProfit; else -> null } }
+    private fun applyEntrySlippage(price: Double, side: Side, config: BacktestConfig): Double { val f = config.slippageBps / 10000.0; return when (side) { Side.LONG -> price * (1.0 + f); Side.SHORT -> price * (1.0 - f) } }
+    private fun applyExitSlippage(price: Double, side: Side, config: BacktestConfig): Double { val f = config.slippageBps / 10000.0; return when (side) { Side.LONG -> price * (1.0 - f); Side.SHORT -> price * (1.0 + f) } }
+    private fun calculateFunding(position: Position, funding: List<FundingRate>, exitTimestamp: Long, config: BacktestConfig): Double {
         if (!config.useFunding) return 0.0
-
-        val applicable = funding.filter {
-            it.timestamp > position.entryTime &&
-                it.timestamp <= exitTimestamp &&
-                it.rate != 0.0
-        }
-        if (applicable.isEmpty()) return 0.0
-
+        val applicable = funding.filter { it.timestamp > position.entryTime && it.timestamp <= exitTimestamp && it.rate != 0.0 }
         var total = 0.0
         for (rate in applicable) {
             val referencePrice = if (rate.markPrice > 0.0) rate.markPrice else position.entryPrice
-            val notional = referencePrice * position.quantity
-            val payment = notional * rate.rate
-            total += when (position.side) {
-                Side.LONG -> payment
-                Side.SHORT -> -payment
-            }
+            val payment = referencePrice * position.quantity * rate.rate
+            total += when (position.side) { Side.LONG -> payment; Side.SHORT -> -payment }
         }
         return total
     }
