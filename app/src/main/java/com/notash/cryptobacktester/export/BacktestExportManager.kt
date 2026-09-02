@@ -2,14 +2,25 @@ package com.notash.cryptobacktester.export
 
 import android.content.ContentValues
 import android.content.Context
+import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import com.notash.cryptobacktester.core.BacktestReport
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import org.json.JSONArray
 import org.json.JSONObject
+
+enum class ExportStorageMode {
+    MEDIA_STORE_DOWNLOADS,
+    APP_EXTERNAL_FILES
+}
+
+fun exportStorageModeForSdk(sdk: Int): ExportStorageMode =
+    if (sdk >= Build.VERSION_CODES.Q) ExportStorageMode.MEDIA_STORE_DOWNLOADS
+    else ExportStorageMode.APP_EXTERNAL_FILES
 
 object BacktestExportManager {
     fun csv(report: BacktestReport): String = buildString {
@@ -58,7 +69,14 @@ object BacktestExportManager {
         appendLine("AI review inputs: use net PnL, drawdown, win rate, fees, funding and trade-by-trade results to diagnose risk and strategy quality.")
     }
 
-    fun save(context: Context, fileName: String, content: String, mime: String): Boolean {
+    fun save(context: Context, fileName: String, content: String, mime: String): Boolean =
+        when (exportStorageModeForSdk(Build.VERSION.SDK_INT)) {
+            ExportStorageMode.MEDIA_STORE_DOWNLOADS -> saveViaMediaStore(context, fileName, content, mime)
+            ExportStorageMode.APP_EXTERNAL_FILES -> saveToAppExternalFiles(context, fileName, content)
+        }
+
+    private fun saveViaMediaStore(context: Context, fileName: String, content: String, mime: String): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return false
         val values = ContentValues().apply {
             put(MediaStore.Downloads.DISPLAY_NAME, fileName)
             put(MediaStore.Downloads.MIME_TYPE, mime)
@@ -67,9 +85,23 @@ object BacktestExportManager {
         val uri = context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values) ?: return false
         return try {
             context.contentResolver.openOutputStream(uri)?.use { it.write(content.toByteArray(Charsets.UTF_8)) }
+                ?: return false
             true
         } catch (_: Exception) {
             context.contentResolver.delete(uri, null, null)
+            false
+        }
+    }
+
+    private fun saveToAppExternalFiles(context: Context, fileName: String, content: String): Boolean {
+        return try {
+            val downloads = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
+                ?: context.filesDir
+            val directory = File(downloads, "NotashCryptoBacktester")
+            if (!directory.exists() && !directory.mkdirs()) return false
+            File(directory, fileName).writeText(content, Charsets.UTF_8)
+            true
+        } catch (_: Exception) {
             false
         }
     }

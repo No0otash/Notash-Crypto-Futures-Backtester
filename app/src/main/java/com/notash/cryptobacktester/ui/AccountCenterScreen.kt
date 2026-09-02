@@ -20,18 +20,22 @@ import androidx.compose.ui.unit.sp
 import com.notash.cryptobacktester.auth.SupabaseAuth
 import kotlinx.coroutines.launch
 
-private val Bg = Color(0xFF070A10)
-private val Panel = Color(0xFF101722)
 private val Accent = Color(0xFF12C8B5)
-private val Muted = Color(0xFF8995A8)
 
 @Composable
-fun AccountCenterScreen(onContinue: () -> Unit, onSignedOut: () -> Unit) {
+fun AccountCenterScreen(
+    onContinue: () -> Unit,
+    onSignedOut: () -> Unit,
+    themeMode: AppThemeMode,
+    onThemeMode: (AppThemeMode) -> Unit
+) {
     val context = LocalContext.current
     val auth = remember { SupabaseAuth(context) }
     val session = auth.currentSession()
     val scope = rememberCoroutineScope()
     val prefs = remember { context.getSharedPreferences("alvex_preferences", 0) }
+    val scheme = MaterialTheme.colorScheme
+    val muted = if (themeMode == AppThemeMode.DARK) Color(0xFFB2BDCC) else Color(0xFF536172)
     var email by rememberSaveable { mutableStateOf(session?.email.orEmpty()) }
     var newEmail by rememberSaveable { mutableStateOf("") }
     var newPassword by rememberSaveable { mutableStateOf("") }
@@ -42,12 +46,19 @@ fun AccountCenterScreen(onContinue: () -> Unit, onSignedOut: () -> Unit) {
     var message by remember { mutableStateOf<String?>(null) }
     fun savePrefs() = prefs.edit().putString("language", language).putBoolean("notifications", notifications).putBoolean("privacy", privacy).apply()
 
-    LazyColumn(Modifier.fillMaxSize().background(Bg).padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(bottom = 28.dp)) {
-        item { Text("ALVEX Account", color = Color.White, fontSize = 27.sp, fontWeight = FontWeight.Black); Text("Profile • Settings • Security", color = Muted, fontSize = 12.sp) }
+    LazyColumn(
+        Modifier.fillMaxSize().background(scheme.background).padding(18.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(bottom = 28.dp)
+    ) {
         item {
-            Card(shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = Panel)) {
+            Text("ALVEX Account", color = scheme.onBackground, fontSize = 27.sp, fontWeight = FontWeight.Black)
+            Text("Profile • Settings • Security", color = muted, fontSize = 12.sp)
+        }
+        item {
+            Card(shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = scheme.surface)) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("Profile", color = Color.White, fontSize = 19.sp)
+                    Text("Profile", color = scheme.onSurface, fontSize = 19.sp)
                     OutlinedTextField(email, {}, Modifier.fillMaxWidth(), enabled = false, label = { Text("Current email") })
                     OutlinedTextField(newEmail, { newEmail = it }, Modifier.fillMaxWidth(), singleLine = true, label = { Text("New email") })
                     Button(enabled = newEmail.isNotBlank() && !busy, onClick = {
@@ -58,9 +69,9 @@ fun AccountCenterScreen(onContinue: () -> Unit, onSignedOut: () -> Unit) {
             }
         }
         item {
-            Card(shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = Panel)) {
+            Card(shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = scheme.surface)) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("Security", color = Color.White, fontSize = 19.sp)
+                    Text("Security", color = scheme.onSurface, fontSize = 19.sp)
                     OutlinedTextField(newPassword, { newPassword = it }, Modifier.fillMaxWidth(), singleLine = true, label = { Text("New password (min 6)") }, visualTransformation = PasswordVisualTransformation(), leadingIcon = { Icon(Icons.Outlined.Lock, null) })
                     Button(enabled = newPassword.length >= 6 && !busy, onClick = {
                         busy = true; message = null
@@ -78,19 +89,43 @@ fun AccountCenterScreen(onContinue: () -> Unit, onSignedOut: () -> Unit) {
             }
         }
         item {
-            Card(shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = Panel)) {
+            Card(shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = scheme.surface)) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Settings", color = Color.White, fontSize = 19.sp)
-                    listOf("English", "فارسی", "العربية", "Français", "中文").forEach { option ->
-                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { RadioButton(selected = language == option, onClick = { language = option; savePrefs() }); Text(option, color = Color.White) }
+                    Text("Settings", color = scheme.onSurface, fontSize = 19.sp)
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Light theme", color = scheme.onSurface)
+                            Text(if (themeMode == AppThemeMode.LIGHT) "Light mode is active" else "Dark mode is active", color = muted, fontSize = 11.sp)
+                        }
+                        Switch(
+                            checked = themeMode == AppThemeMode.LIGHT,
+                            onCheckedChange = { onThemeMode(if (it) AppThemeMode.LIGHT else AppThemeMode.DARK) }
+                        )
                     }
                     HorizontalDivider()
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Text("Notifications", color = Color.White, modifier = Modifier.weight(1f)); Switch(checked = notifications, onCheckedChange = { notifications = it; savePrefs() }) }
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Text("Privacy mode", color = Color.White, modifier = Modifier.weight(1f)); Switch(checked = privacy, onCheckedChange = { privacy = it; savePrefs() }) }
+                    listOf("English", "فارسی", "العربية", "Français", "中文").forEach { option ->
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            RadioButton(selected = language == option, onClick = { language = option; savePrefs() })
+                            Text(option, color = scheme.onSurface)
+                        }
+                    }
+                    HorizontalDivider()
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text("Notifications", color = scheme.onSurface, modifier = Modifier.weight(1f))
+                        Switch(checked = notifications, onCheckedChange = { notifications = it; savePrefs() })
+                    }
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text("Privacy mode", color = scheme.onSurface, modifier = Modifier.weight(1f))
+                        Switch(checked = privacy, onCheckedChange = { privacy = it; savePrefs() })
+                    }
                 }
             }
         }
-        item { message?.let { Text(it, color = Accent, fontSize = 12.sp) } }
-        item { Button(onClick = onContinue, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Accent)) { Text("Continue to ALVEX", color = Color(0xFF06100F)) } }
+        item { message?.let { Text(it, color = if (themeMode == AppThemeMode.DARK) Accent else scheme.primary, fontSize = 12.sp) } }
+        item {
+            Button(onClick = onContinue, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = scheme.primary)) {
+                Text("Continue to ALVEX", color = scheme.onPrimary)
+            }
+        }
     }
 }
