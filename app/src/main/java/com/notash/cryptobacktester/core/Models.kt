@@ -57,7 +57,10 @@ data class TradeResult(
     val funding: Double,
     val netPnl: Double,
     val entryTime: Long,
-    val exitTime: Long
+    val exitTime: Long,
+    val stopLoss: Double = 0.0,
+    val takeProfit: Double = 0.0,
+    val exitReason: String = "Unknown"
 )
 
 data class BacktestConfig(
