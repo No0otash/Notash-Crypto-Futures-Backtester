@@ -13,7 +13,7 @@ class PumpDumpRadarEngineTest {
             PumpDumpMarketEvidence(snapshot(), previousQuoteVolume24h = 2_000_000.0, volatilityPercent = 4.0),
             PumpDumpIntelligence(whalePressure = 70, newsImpact = 50)
         )
-        assertEquals(PumpDumpDirection.PUMP, result.direction)
+        assertEquals(RadarPumpDumpDirection.PUMP, result.direction)
         assertTrue(result.score >= 60)
         assertTrue(result.confidence > 50)
         assertTrue(result.reasons.any { it.contains("Positive momentum") })
@@ -24,7 +24,7 @@ class PumpDumpRadarEngineTest {
             PumpDumpMarketEvidence(snapshot(price = 80.0), previousQuoteVolume24h = 2_000_000.0, volatilityPercent = 10.0),
             PumpDumpIntelligence(whalePressure = -80, newsImpact = -50, tokenomicsRisk = 90, holderConcentrationRisk = 80, projectRisk = 70)
         )
-        assertEquals(PumpDumpDirection.DUMP, result.direction)
+        assertEquals(RadarPumpDumpDirection.DUMP, result.direction)
         assertTrue(result.score >= 60)
         assertTrue(result.reasons.any { it.contains("Tokenomics") })
     }
