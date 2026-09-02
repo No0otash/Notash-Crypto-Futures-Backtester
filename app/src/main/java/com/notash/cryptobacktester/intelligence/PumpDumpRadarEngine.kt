@@ -1,7 +1,6 @@
 package com.notash.cryptobacktester.intelligence
 
 import kotlin.math.abs
-import kotlin.math.ln
 import kotlin.math.round
 
 /** Explainable pump/dump detector. Only supplied provider evidence is scored. */
@@ -22,11 +21,11 @@ data class PumpDumpIntelligence(
     val projectRisk: Int? = null
 )
 
-enum class PumpDumpDirection { PUMP, DUMP, WATCH }
+enum class RadarPumpDumpDirection { PUMP, DUMP, WATCH }
 
-data class PumpDumpSignal(
+data class RadarPumpDumpSignal(
     val symbol: String,
-    val direction: PumpDumpDirection,
+    val direction: RadarPumpDumpDirection,
     val score: Int,
     val confidence: Int,
     val momentumScore: Int,
@@ -41,7 +40,7 @@ data class PumpDumpSignal(
 )
 
 class PumpDumpRadarEngine {
-    fun analyze(evidence: PumpDumpMarketEvidence, intelligence: PumpDumpIntelligence = PumpDumpIntelligence()): PumpDumpSignal {
+    fun analyze(evidence: PumpDumpMarketEvidence, intelligence: PumpDumpIntelligence = PumpDumpIntelligence()): RadarPumpDumpSignal {
         val s = evidence.snapshot
         require(s.lastPrice > 0.0 && s.open24h > 0.0) { "Invalid market price data" }
         val change = (s.lastPrice / s.open24h - 1.0) * 100.0
@@ -58,12 +57,12 @@ class PumpDumpRadarEngine {
         val holder = intelligence.holderConcentrationRisk
         val project = intelligence.projectRisk
 
-        val pumpEvidence = weightedPositive(change, volumeAnomaly, whale, news)
-        val dumpEvidence = weightedNegative(change, volumeAnomaly, whale, news, token, holder, project)
+        val pumpEvidence = weightedPositive(change, volumeAnomaly, whale, news ?: 0)
+        val dumpEvidence = weightedNegative(change, volumeAnomaly, whale, news ?: 0, token, holder, project)
         val direction = when {
-            pumpEvidence >= 60 && pumpEvidence > dumpEvidence + 10 -> PumpDumpDirection.PUMP
-            dumpEvidence >= 60 && dumpEvidence > pumpEvidence + 10 -> PumpDumpDirection.DUMP
-            else -> PumpDumpDirection.WATCH
+            pumpEvidence >= 60 && pumpEvidence > dumpEvidence + 10 -> RadarPumpDumpDirection.PUMP
+            dumpEvidence >= 60 && dumpEvidence > pumpEvidence + 10 -> RadarPumpDumpDirection.DUMP
+            else -> RadarPumpDumpDirection.WATCH
         }
         val score = maxOf(pumpEvidence, dumpEvidence).coerceIn(0, 100)
         val gaps = buildList {
@@ -79,8 +78,13 @@ class PumpDumpRadarEngine {
         }
         val evidenceCount = 1 + listOfNotNull(evidence.previousQuoteVolume24h, evidence.volatilityPercent, evidence.spreadPercent, evidence.openInterestChangePercent, whale, news, token, holder, project).size
         val confidence = (35 + evidenceCount * 6 - gaps.size * 2).coerceIn(15, 95)
-        return PumpDumpSignal(s.symbol.uppercase(), direction, score, confidence, momentum, volumeAnomaly, volatilityRisk, liquidityRisk, whale, news, token,
-            reasons(change, volumeAnomaly, volatilityRisk, liquidityRisk, whale, news, token, holder, project, direction), gaps)
+        return RadarPumpDumpSignal(
+            symbol = s.symbol.uppercase(), direction = direction, score = score, confidence = confidence,
+            momentumScore = momentum, volumeAnomalyScore = volumeAnomaly, volatilityRisk = volatilityRisk,
+            liquidityRisk = liquidityRisk, whalePressure = whale, newsImpact = news, tokenomicsRisk = token,
+            reasons = reasons(change, volumeAnomaly, volatilityRisk, liquidityRisk, whale, news, token, holder, project, direction),
+            dataGaps = gaps
+        )
     }
 
     private fun weightedPositive(change: Double, volume: Int, whale: Int?, news: Int): Int =
@@ -95,7 +99,7 @@ class PumpDumpRadarEngine {
         return maxOf(volumeRisk, spreadRisk)
     }
 
-    private fun reasons(change: Double, volume: Int, volatility: Int, liquidity: Int, whale: Int?, news: Int?, token: Int?, holder: Int?, project: Int?, direction: PumpDumpDirection) = buildList {
+    private fun reasons(change: Double, volume: Int, volatility: Int, liquidity: Int, whale: Int?, news: Int?, token: Int?, holder: Int?, project: Int?, direction: RadarPumpDumpDirection) = buildList {
         if (change >= 3) add("Strong positive momentum") else if (change <= -3) add("Strong negative momentum")
         if (volume >= 50) add("Unusual volume increase")
         if (volatility >= 60) add("High volatility risk")
@@ -106,7 +110,7 @@ class PumpDumpRadarEngine {
         if (holder != null && holder >= 50) add("Holder concentration risk is elevated")
         if (project != null && project >= 50) add("Project risk is elevated")
         if (isEmpty()) add("No dominant anomaly; continue monitoring")
-        if (direction == PumpDumpDirection.WATCH) add("Signal is below directional confirmation threshold")
+        if (direction == RadarPumpDumpDirection.WATCH) add("Signal is below directional confirmation threshold")
     }
 
     private fun Double.toScore() = round(coerceIn(0.0, 100.0)).toInt()
