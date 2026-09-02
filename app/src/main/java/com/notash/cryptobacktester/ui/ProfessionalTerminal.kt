@@ -73,7 +73,7 @@ fun ProfessionalTerminal() {
                     TerminalPage.MARKETS -> MarketsScreen(fa, market, { market = it; vm.setMarket(it) }) { page = TerminalPage.BACKTEST }
                     TerminalPage.BACKTEST -> BacktestScreen(fa, market, { market = it; vm.setMarket(it) }, timeframe, { timeframe = it }, vm, state)
                     TerminalPage.STRATEGY -> StrategyScreen(fa)
-                    TerminalPage.INTELLIGENCE -> IntelligenceScreen(fa, market)
+                    TerminalPage.INTELLIGENCE -> CoinIntelligenceWorkspace(fa, market)
                     TerminalPage.AI -> AiScreen(fa, market, state.report)
                 }
             }
