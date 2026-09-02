@@ -11,7 +11,7 @@ android {
     compileSdk = 35
     defaultConfig {
         applicationId = "com.notash.cryptobacktester"
-        minSdk = 26
+        minSdk = 23
         targetSdk = 35
         versionCode = 11
         versionName = "2.0.0"
