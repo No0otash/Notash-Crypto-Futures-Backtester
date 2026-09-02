@@ -40,9 +40,12 @@ class PumpDumpRadarOrchestrator(private val engine: PumpDumpRadarEngine = PumpDu
     private fun combine(rows: List<RadarPumpDumpSignal>): RadarPumpDumpSignal {
         if (rows.size == 1) return rows.single()
         val best = rows.maxBy { it.score }
-        val averageConfidence = rows.map { it.confidence }.average().roundToInt().coerceIn(15, 95)
+        // Independent exchange observations increase confidence without fabricating new evidence.
+        val corroborationBonus = ((rows.size - 1) * 15).coerceAtMost(20)
+        val averageConfidence = rows.map { it.confidence }.average().roundToInt()
+        val combinedConfidence = (averageConfidence + corroborationBonus).coerceIn(15, 95)
         return best.copy(
-            confidence = averageConfidence,
+            confidence = combinedConfidence,
             reasons = rows.flatMap { it.reasons }.distinct().take(8),
             dataGaps = rows.flatMap { it.dataGaps }.distinct()
         )
