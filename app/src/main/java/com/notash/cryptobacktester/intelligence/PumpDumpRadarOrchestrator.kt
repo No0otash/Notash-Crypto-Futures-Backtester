@@ -5,7 +5,7 @@ package com.notash.cryptobacktester.intelligence
  * External intelligence is optional and remains explicitly absent when unavailable.
  */
 class PumpDumpRadarOrchestrator(private val engine: PumpDumpRadarEngine = PumpDumpRadarEngine()) {
-    data class Result(val signals: List<PumpDumpSignal>, val scannedAtMs: Long)
+    data class Result(val signals: List<RadarPumpDumpSignal>, val scannedAtMs: Long)
 
     fun analyze(
         snapshots: List<RadarMarketSnapshot>,
@@ -15,7 +15,7 @@ class PumpDumpRadarOrchestrator(private val engine: PumpDumpRadarEngine = PumpDu
         openInterestChangeByKey: Map<String, Double> = emptyMap(),
         intelligenceBySymbol: Map<String, PumpDumpIntelligence> = emptyMap()
     ): Result {
-        val signals = snapshots.map { snapshot ->
+        val signals: List<RadarPumpDumpSignal> = snapshots.map { snapshot ->
             val key = "${snapshot.exchange.uppercase()}:${snapshot.symbol.uppercase()}"
             engine.analyze(
                 PumpDumpMarketEvidence(
@@ -27,13 +27,17 @@ class PumpDumpRadarOrchestrator(private val engine: PumpDumpRadarEngine = PumpDu
                 ),
                 intelligenceBySymbol[snapshot.symbol.uppercase()] ?: PumpDumpIntelligence()
             )
-        }.groupBy { it.symbol }
-            .map { (_, rows) -> combine(rows) }
-            .sortedByDescending { it.score }
-        return Result(signals, System.currentTimeMillis())
+        }
+        return Result(
+            signals = signals.groupBy { it.symbol }
+                .values
+                .map { rows -> combine(rows) }
+                .sortedByDescending { it.score },
+            scannedAtMs = System.currentTimeMillis()
+        )
     }
 
-    private fun combine(rows: List<PumpDumpSignal>): PumpDumpSignal {
+    private fun combine(rows: List<RadarPumpDumpSignal>): RadarPumpDumpSignal {
         if (rows.size == 1) return rows.single()
         val best = rows.maxBy { it.score }
         val averageConfidence = rows.map { it.confidence }.average().roundToInt().coerceIn(15, 95)
