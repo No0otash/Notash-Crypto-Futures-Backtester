@@ -100,7 +100,7 @@ class PumpDumpRadarEngine {
     }
 
     private fun reasons(change: Double, volume: Int, volatility: Int, liquidity: Int, whale: Int?, news: Int?, token: Int?, holder: Int?, project: Int?, direction: RadarPumpDumpDirection) = buildList {
-        if (change >= 3) add("Strong positive momentum") else if (change <= -3) add("Strong negative momentum")
+        if (change >= 3) add("Positive momentum is strong") else if (change <= -3) add("Strong negative momentum")
         if (volume >= 50) add("Unusual volume increase")
         if (volatility >= 60) add("High volatility risk")
         if (liquidity >= 55) add("Liquidity risk is elevated")
