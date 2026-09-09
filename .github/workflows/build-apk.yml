@@ -23,26 +23,6 @@ jobs:
           java-version: '17'
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
-
-      - name: Integrate trade report route
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path('app/src/main/java/com/notash/cryptobacktester/ui/ProfessionalTerminal.kt')
-          s = p.read_text()
-          old = '                    TerminalPage.BACKTEST -> BacktestScreen(fa, market, { market = it; vm.setMarket(it) }, timeframe, { timeframe = it }, vm, state)\n'
-          new = old + '                    TerminalPage.REPORT -> TradeByTradeReport(fa, state.report, Modifier.fillMaxSize())\n'
-          if 'TerminalPage.REPORT -> TradeByTradeReport' not in s:
-              if old not in s:
-                  raise SystemExit('Expected ProfessionalTerminal Backtest route not found.')
-              p.write_text(s.replace(old, new, 1))
-          PY
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add app/src/main/java/com/notash/cryptobacktester/ui/ProfessionalTerminal.kt
-          git diff --cached --quiet || git commit -m 'feat: connect trade report to terminal navigation'
-          git push origin HEAD:main
-
       - name: Unit tests
         run: gradle testDebugUnitTest
       - name: Build Debug APK
@@ -54,3 +34,27 @@ jobs:
         with:
           name: ALVEX-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
+      - name: Record PROJECT_COMMAND trade report status
+        run: |
+          if ! grep -q 'Trade Report — 2026-09-09' PROJECT_COMMAND.md; then
+            cat >> PROJECT_COMMAND.md <<'EOF'
+
+### 2026-09-09 — Trade Report
+- وضعیت بخش `2.4 Trade Report`: 🟢 **Complete** پس از پیاده‌سازی و verification.
+- مدل `TradeResult` تکمیل شد و برای هر معامله `timeframe`، `leverage` و `slTouched` را نگه می‌دارد؛ `pnlPercent` و `isWin` نیز از داده واقعی معامله محاسبه می‌شوند.
+- `BacktestConfig` و `BacktestReport` به timeframe/leverage متصل شدند تا این اطلاعات از تنظیمات واقعی بک‌تست به گزارش برسند.
+- منطق موتور بک‌تست `SL touched` را از روی High/Low واقعی کندل‌های بعد از ورود دنبال می‌کند؛ این مقدار صرفاً از `exitReason` حدس زده نمی‌شود.
+- صفحه مستقل حرفه‌ای `Trade Report` به Terminal Navigation اضافه شد و برای هر معامله LONG/SHORT، Entry، Exit، Timeframe، Entry/Exit time، Position size، Leverage، SL، TP، Exit reason، SL touched، PnL، PnL%، Fees، Funding و Win/Loss را نمایش می‌دهد.
+- گزارش به `state.report` واقعی بک‌تست متصل است و مدل/نمایش موازی یا داده ساختگی برای این بخش ایجاد نشده است.
+- تست قراردادی `TradeResultTest` برای اطمینان از فیلدهای گزارش و محاسبه PnL%/Win-Loss اضافه شد.
+- Verification نهایی: `gradle testDebugUnitTest` و `gradle assembleDebug` در GitHub Actions با موفقیت سبز شدند.
+- APK Debug در همان CI ساخته و artifact آن upload شد.
+- محدودیت باقی‌مانده: verification بصری روی دستگاه واقعی در این مرحله انجام نشده است؛ بنابراین این مورد جدا از Build/Test ثبت می‌شود و برای ادعای کیفیت نهایی visual/device نیاز به نصب و بررسی روی دستگاه دارد.
+- موارد خارج از scope این تغییر، مانند تکمیل Export CSV/JSON با همه فیلدهای جدید، در این مرحله تغییر داده نشدند و نباید به‌عنوان Complete این بخش تلقی شوند.
+EOF
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add PROJECT_COMMAND.md
+            git commit -m 'docs: record trade report completion'
+            git push origin HEAD:main
+          fi
