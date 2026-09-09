@@ -17,6 +17,7 @@ class BacktestEngine {
         var balance = config.initialBalance
         var position: Position? = null
         var pendingSignal: com.notash.cryptobacktester.core.Signal? = null
+        var slTouched = false
         val trades = mutableListOf<TradeResult>()
         val equityCurve = mutableListOf<Double>()
         var totalFees = 0.0
@@ -36,6 +37,7 @@ class BacktestEngine {
                         val entryFeeRate = when (signal.orderType) { OrderType.LIMIT -> config.makerFee; OrderType.MARKET -> config.takerFee }
                         val entryFee = abs(entryPrice * quantity) * entryFeeRate
                         position = Position(signal.side, entryPrice, quantity, signal.stopLoss, signal.takeProfit, candle.timestamp, entryFee)
+                        slTouched = false
                         balance -= entryFee
                         totalFees += entryFee
                     }
@@ -45,6 +47,11 @@ class BacktestEngine {
 
             val currentPosition = position
             if (currentPosition != null) {
+                val candleTouchedSl = when (currentPosition.side) {
+                    Side.LONG -> candle.low <= currentPosition.stopLoss
+                    Side.SHORT -> candle.high >= currentPosition.stopLoss
+                }
+                slTouched = slTouched || candleTouchedSl
                 val exit = checkExit(currentPosition, candle)
                 if (exit != null) {
                     val exitPrice = applyExitSlippage(exit, currentPosition.side, config)
@@ -63,8 +70,9 @@ class BacktestEngine {
                         currentPosition.side == Side.SHORT && candle.low <= currentPosition.takeProfit -> "TP"
                         else -> "Unknown"
                     }
-                    trades += TradeResult(currentPosition.side, currentPosition.entryPrice, exitPrice, currentPosition.quantity, grossPnl, totalTradeFees, fundingCost, netPnl, currentPosition.entryTime, candle.timestamp, currentPosition.stopLoss, currentPosition.takeProfit, reason)
+                    trades += TradeResult(currentPosition.side, currentPosition.entryPrice, exitPrice, currentPosition.quantity, grossPnl, totalTradeFees, fundingCost, netPnl, currentPosition.entryTime, candle.timestamp, currentPosition.stopLoss, currentPosition.takeProfit, reason, config.timeframe, config.leverage, slTouched)
                     position = null
+                    slTouched = false
                 }
             }
 
@@ -89,7 +97,7 @@ class BacktestEngine {
             val netPnl = grossPnl - totalTradeFees - fundingCost
             balance += grossPnl - exitFee - fundingCost
             totalFees += exitFee; totalFunding += fundingCost
-            trades += TradeResult(finalPosition.side, finalPosition.entryPrice, exitPrice, finalPosition.quantity, grossPnl, totalTradeFees, fundingCost, netPnl, finalPosition.entryTime, lastCandle.timestamp, finalPosition.stopLoss, finalPosition.takeProfit, "End of data")
+            trades += TradeResult(finalPosition.side, finalPosition.entryPrice, exitPrice, finalPosition.quantity, grossPnl, totalTradeFees, fundingCost, netPnl, finalPosition.entryTime, lastCandle.timestamp, finalPosition.stopLoss, finalPosition.takeProfit, "End of data", config.timeframe, config.leverage, slTouched)
             if (equityCurve.isNotEmpty()) equityCurve[equityCurve.lastIndex] = balance
             peakEquity = max(peakEquity, balance)
             if (peakEquity > 0.0) maxDrawdown = max(maxDrawdown, ((peakEquity - balance) / peakEquity) * 100.0)
@@ -102,7 +110,7 @@ class BacktestEngine {
         val grossProfit = trades.filter { it.netPnl > 0.0 }.sumOf { it.netPnl }
         val grossLoss = trades.filter { it.netPnl < 0.0 }.sumOf { abs(it.netPnl) }
         val profitFactor = when { grossLoss > 0.0 -> grossProfit / grossLoss; grossProfit > 0.0 -> Double.POSITIVE_INFINITY; else -> 0.0 }
-        return BacktestReport(config.initialBalance, balance, netPnl, roi, maxDrawdown, winRate, profitFactor, totalFees, totalFunding, trades, equityCurve)
+        return BacktestReport(config.initialBalance, balance, netPnl, roi, maxDrawdown, winRate, profitFactor, totalFees, totalFunding, trades, equityCurve, config.timeframe, config.leverage)
     }
 
     private fun calculatePositionSize(balance: Double, entry: Double, stop: Double, config: BacktestConfig): Double {
