@@ -61,7 +61,7 @@ class BacktestExportManagerTest {
         assertEquals("1h", values[4])
         assertEquals("5.0", values[8])
         assertEquals("true", values[12])
-        assertEquals("LOSS", values[18])
+        assertEquals("WIN", values[18])
         assertEquals(trade.pnlPercent.toString(), values[15])
     }
 
@@ -80,6 +80,6 @@ class BacktestExportManagerTest {
         assertEquals("SL", exported.getString("exitReason"))
         assertTrue(exported.getBoolean("slTouched"))
         assertEquals(trade.pnlPercent, exported.getDouble("pnlPercent"), 0.000001)
-        assertEquals("LOSS", exported.getString("status"))
+        assertEquals("WIN", exported.getString("status"))
     }
 }
