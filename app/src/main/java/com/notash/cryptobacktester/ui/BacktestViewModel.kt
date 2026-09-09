@@ -61,7 +61,8 @@ class BacktestViewModel : ViewModel() {
                     makerFee = current.makerFee,
                     takerFee = current.takerFee,
                     slippageBps = 2.0,
-                    useFunding = current.useFunding
+                    useFunding = current.useFunding,
+                    timeframe = current.timeframe
                 )
                 _state.value = _state.value.copy(status = "Running backtest...")
                 val result = runner.run(current.market, current.timeframe, now - thirtyDays, now, current.strategy, config)
