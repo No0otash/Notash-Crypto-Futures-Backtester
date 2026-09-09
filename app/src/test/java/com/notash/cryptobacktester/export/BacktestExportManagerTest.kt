@@ -3,10 +3,7 @@ package com.notash.cryptobacktester.export
 import com.notash.cryptobacktester.core.BacktestReport
 import com.notash.cryptobacktester.core.Side
 import com.notash.cryptobacktester.core.TradeResult
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
+import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -70,19 +67,19 @@ class BacktestExportManagerTest {
 
     @Test
     fun json_contains_all_trade_report_fields_and_values() {
-        val root = Json.parseToJsonElement(BacktestExportManager.json(report)).jsonObject
-        val exported = root.getValue("trades").jsonArray.first().jsonObject
+        val root = JSONObject(BacktestExportManager.json(report))
+        val exported = root.getJSONArray("trades").getJSONObject(0)
 
-        assertEquals("1", exported.getValue("tradeNumber").jsonPrimitive.content)
-        assertEquals("SHORT", exported.getValue("side").jsonPrimitive.content)
-        assertEquals("1h", exported.getValue("timeframe").jsonPrimitive.content)
-        assertEquals("1.5", exported.getValue("positionSize").jsonPrimitive.content)
-        assertEquals("5.0", exported.getValue("leverage").jsonPrimitive.content)
-        assertEquals("210.0", exported.getValue("stopLoss").jsonPrimitive.content)
-        assertEquals("180.0", exported.getValue("takeProfit").jsonPrimitive.content)
-        assertEquals("SL", exported.getValue("exitReason").jsonPrimitive.content)
-        assertTrue(exported.getValue("slTouched").jsonPrimitive.content.toBoolean())
-        assertEquals(trade.pnlPercent, exported.getValue("pnlPercent").jsonPrimitive.content.toDouble(), 0.000001)
-        assertEquals("WIN", exported.getValue("status").jsonPrimitive.content)
+        assertEquals(1, exported.getInt("tradeNumber"))
+        assertEquals("SHORT", exported.getString("side"))
+        assertEquals("1h", exported.getString("timeframe"))
+        assertEquals(1.5, exported.getDouble("positionSize"), 0.0)
+        assertEquals(5.0, exported.getDouble("leverage"), 0.0)
+        assertEquals(210.0, exported.getDouble("stopLoss"), 0.0)
+        assertEquals(180.0, exported.getDouble("takeProfit"), 0.0)
+        assertEquals("SL", exported.getString("exitReason"))
+        assertTrue(exported.getBoolean("slTouched"))
+        assertEquals(trade.pnlPercent, exported.getDouble("pnlPercent"), 0.000001)
+        assertEquals("WIN", exported.getString("status"))
     }
 }
