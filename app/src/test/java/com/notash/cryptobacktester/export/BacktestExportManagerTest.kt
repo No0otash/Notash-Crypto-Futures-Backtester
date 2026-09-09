@@ -73,16 +73,16 @@ class BacktestExportManagerTest {
         val root = Json.parseToJsonElement(BacktestExportManager.json(report)).jsonObject
         val exported = root.getValue("trades").jsonArray.first().jsonObject
 
-        assertEquals(1, exported.getValue("tradeNumber").jsonPrimitive.int)
+        assertEquals("1", exported.getValue("tradeNumber").jsonPrimitive.content)
         assertEquals("SHORT", exported.getValue("side").jsonPrimitive.content)
         assertEquals("1h", exported.getValue("timeframe").jsonPrimitive.content)
-        assertEquals(1.5, exported.getValue("positionSize").jsonPrimitive.double, 0.0)
-        assertEquals(5.0, exported.getValue("leverage").jsonPrimitive.double, 0.0)
-        assertEquals(210.0, exported.getValue("stopLoss").jsonPrimitive.double, 0.0)
-        assertEquals(180.0, exported.getValue("takeProfit").jsonPrimitive.double, 0.0)
+        assertEquals("1.5", exported.getValue("positionSize").jsonPrimitive.content)
+        assertEquals("5.0", exported.getValue("leverage").jsonPrimitive.content)
+        assertEquals("210.0", exported.getValue("stopLoss").jsonPrimitive.content)
+        assertEquals("180.0", exported.getValue("takeProfit").jsonPrimitive.content)
         assertEquals("SL", exported.getValue("exitReason").jsonPrimitive.content)
-        assertTrue(exported.getValue("slTouched").jsonPrimitive.boolean)
-        assertEquals(trade.pnlPercent, exported.getValue("pnlPercent").jsonPrimitive.double, 0.000001)
+        assertTrue(exported.getValue("slTouched").jsonPrimitive.content.toBoolean())
+        assertEquals(trade.pnlPercent, exported.getValue("pnlPercent").jsonPrimitive.content.toDouble(), 0.000001)
         assertEquals("WIN", exported.getValue("status").jsonPrimitive.content)
     }
 }
