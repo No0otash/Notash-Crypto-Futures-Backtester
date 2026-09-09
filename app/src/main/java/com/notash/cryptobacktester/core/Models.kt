@@ -60,8 +60,15 @@ data class TradeResult(
     val exitTime: Long,
     val stopLoss: Double = 0.0,
     val takeProfit: Double = 0.0,
-    val exitReason: String = "Unknown"
-)
+    val exitReason: String = "Unknown",
+    val timeframe: String = "Unknown",
+    val leverage: Double = 0.0,
+    val slTouched: Boolean = false
+) {
+    val pnlPercent: Double
+        get() = if (entryPrice > 0.0 && quantity > 0.0) (netPnl / (entryPrice * quantity)) * 100.0 else 0.0
+    val isWin: Boolean get() = netPnl > 0.0
+}
 
 data class BacktestConfig(
     val initialBalance: Double = 1000.0,
@@ -76,7 +83,8 @@ data class BacktestConfig(
     val entryAtr: Double = 0.5,
     val stopAtr: Double = 1.5,
     val takeProfitAtr: Double = 3.0,
-    val useFunding: Boolean = true
+    val useFunding: Boolean = true,
+    val timeframe: String = "Unknown"
 )
 
 data class BacktestReport(
@@ -90,5 +98,7 @@ data class BacktestReport(
     val totalFees: Double,
     val totalFunding: Double,
     val trades: List<TradeResult>,
-    val equityCurve: List<Double>
+    val equityCurve: List<Double>,
+    val timeframe: String = "Unknown",
+    val leverage: Double = 0.0
 )
