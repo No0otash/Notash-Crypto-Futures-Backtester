@@ -16,6 +16,7 @@ enum class TerminalPage(val titleFa: String, val titleEn: String) {
     MARKET("خانه", "Home"),
     MARKETS("بازار", "Markets"),
     BACKTEST("بک‌تست", "Backtest"),
+    REPORT("گزارش معاملات", "Trade Report"),
     STRATEGY("استراتژی", "Strategy"),
     INTELLIGENCE("هوش بازار", "Intel"),
     AI("AI Hub", "AI Hub")
@@ -28,6 +29,7 @@ fun TerminalNavigation(selected: TerminalPage, onSelected: (TerminalPage) -> Uni
             TerminalPage.MARKET to Icons.Outlined.Home,
             TerminalPage.MARKETS to Icons.Outlined.List,
             TerminalPage.BACKTEST to Icons.Outlined.Build,
+            TerminalPage.REPORT to Icons.Outlined.List,
             TerminalPage.STRATEGY to Icons.Outlined.Build,
             TerminalPage.INTELLIGENCE to Icons.Outlined.Info,
             TerminalPage.AI to Icons.Outlined.Star
