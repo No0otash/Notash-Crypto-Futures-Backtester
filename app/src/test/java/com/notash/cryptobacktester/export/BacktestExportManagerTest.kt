@@ -4,6 +4,9 @@ import com.notash.cryptobacktester.core.BacktestReport
 import com.notash.cryptobacktester.core.Side
 import com.notash.cryptobacktester.core.TradeResult
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
