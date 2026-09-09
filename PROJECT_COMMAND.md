@@ -548,3 +548,15 @@ AI Hub باید یک Workspace مستقل از Backtester باشد، اما بت
 # 19. مرجع رجیستری 119 آیتمی
 
 فایل `PROJECT_TASKS_119.md` رجیستری 119 آیتمی پروژه است و برای نگهداری ساختار آیتم‌ها استفاده می‌شود. در صورت اختلاف، **این سند (`PROJECT_COMMAND.md`) مرجع عملیاتی پروژه است** و باید اختلاف برطرف و هر دو سند هم‌راستا شوند.
+
+### 2026-09-09 — Trade Report
+- وضعیت بخش `2.4 Trade Report`: 🟢 **Complete** پس از پیاده‌سازی و verification.
+- `TradeResult` تکمیل شد: timeframe، leverage، slTouched، pnlPercent و isWin.
+- `BacktestConfig` و `BacktestReport` به timeframe/leverage متصل شدند.
+- موتور بک‌تست SL touch را از High/Low واقعی کندل‌های بعد از ورود دنبال می‌کند و فقط از exitReason حدس نمی‌زند.
+- صفحه مستقل حرفه‌ای Trade Report به Terminal Navigation اضافه شد و LONG/SHORT، Entry، Exit، Timeframe، Entry/Exit time، Position size، Leverage، SL، TP، Exit reason، SL touched، PnL، PnL%، Fees، Funding و Win/Loss را نمایش می‌دهد.
+- گزارش مستقیماً به state.report واقعی بک‌تست متصل است.
+- تست قراردادی TradeResultTest اضافه شد.
+- Verification: gradle testDebugUnitTest و gradle assembleDebug در GitHub Actions سبز شدند و APK Debug نیز ساخته و artifact شد.
+- محدودیت: verification بصری روی دستگاه واقعی در این مرحله انجام نشده است.
+- خارج از scope این تغییر: تکمیل Export CSV/JSON با همه فیلدهای جدید؛ این مورد Complete محسوب نمی‌شود.
