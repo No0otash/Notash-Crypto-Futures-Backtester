@@ -23,10 +23,36 @@ fun exportStorageModeForSdk(sdk: Int): ExportStorageMode =
     else ExportStorageMode.APP_EXTERNAL_FILES
 
 object BacktestExportManager {
+    private val csvHeaders = listOf(
+        "tradeNumber", "side", "entryPrice", "exitPrice", "timeframe", "entryTime", "exitTime",
+        "positionSize", "leverage", "stopLoss", "takeProfit", "exitReason", "slTouched",
+        "grossPnl", "netPnl", "pnlPercent", "fees", "funding", "status"
+    )
+
     fun csv(report: BacktestReport): String = buildString {
-        appendLine("side,entryPrice,exitPrice,quantity,grossPnl,fees,funding,netPnl,entryTime,exitTime")
-        report.trades.forEach { t ->
-            appendLine(listOf(t.side, t.entryPrice, t.exitPrice, t.quantity, t.grossPnl, t.fees, t.funding, t.netPnl, t.entryTime, t.exitTime).joinToString(","))
+        appendLine(csvHeaders.joinToString(","))
+        report.trades.forEachIndexed { index, t ->
+            appendLine(listOf(
+                index + 1,
+                t.side.name,
+                t.entryPrice,
+                t.exitPrice,
+                csvCell(t.timeframe),
+                t.entryTime,
+                t.exitTime,
+                t.quantity,
+                t.leverage,
+                t.stopLoss,
+                t.takeProfit,
+                csvCell(t.exitReason),
+                t.slTouched,
+                t.grossPnl,
+                t.netPnl,
+                t.pnlPercent,
+                t.fees,
+                t.funding,
+                if (t.isWin) "WIN" else "LOSS"
+            ).joinToString(","))
         }
     }
 
@@ -41,17 +67,41 @@ object BacktestExportManager {
         root.put("profitFactor", if (report.profitFactor.isFinite()) report.profitFactor else JSONObject.NULL)
         root.put("totalFees", report.totalFees)
         root.put("totalFunding", report.totalFunding)
+        root.put("timeframe", report.timeframe)
+        root.put("leverage", report.leverage)
         root.put("equityCurve", JSONArray(report.equityCurve))
+
         val trades = JSONArray()
-        report.trades.forEach { t ->
+        report.trades.forEachIndexed { index, t ->
             trades.put(JSONObject().apply {
-                put("side", t.side.name); put("entryPrice", t.entryPrice); put("exitPrice", t.exitPrice)
-                put("quantity", t.quantity); put("grossPnl", t.grossPnl); put("fees", t.fees)
-                put("funding", t.funding); put("netPnl", t.netPnl); put("entryTime", t.entryTime); put("exitTime", t.exitTime)
+                put("tradeNumber", index + 1)
+                put("side", t.side.name)
+                put("entryPrice", t.entryPrice)
+                put("exitPrice", t.exitPrice)
+                put("timeframe", t.timeframe)
+                put("entryTime", t.entryTime)
+                put("exitTime", t.exitTime)
+                put("positionSize", t.quantity)
+                put("leverage", t.leverage)
+                put("stopLoss", t.stopLoss)
+                put("takeProfit", t.takeProfit)
+                put("exitReason", t.exitReason)
+                put("slTouched", t.slTouched)
+                put("grossPnl", t.grossPnl)
+                put("netPnl", t.netPnl)
+                put("pnlPercent", t.pnlPercent)
+                put("fees", t.fees)
+                put("funding", t.funding)
+                put("status", if (t.isWin) "WIN" else "LOSS")
             })
         }
         root.put("trades", trades)
         return root.toString(2)
+    }
+
+    private fun csvCell(value: String): String {
+        if (value.none { it == ',' || it == '"' || it == '\n' || it == '\r' }) return value
+        return "\"${value.replace("\"", "\"\"")}\""
     }
 
     fun aiReport(report: BacktestReport): String = buildString {
