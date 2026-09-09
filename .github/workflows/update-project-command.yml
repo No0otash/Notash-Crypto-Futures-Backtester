@@ -1,0 +1,25 @@
+name: Record Trade Report Status
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Append status
+        run: |
+          if ! grep -q 'Trade Report — 2026-09-09' PROJECT_COMMAND.md; then
+            printf '\n### 2026-09-09 — Trade Report\n- وضعیت بخش `2.4 Trade Report`: 🟢 **Complete** پس از پیاده‌سازی و verification.\n- `TradeResult` تکمیل شد: timeframe، leverage، slTouched، pnlPercent و isWin.\n- `BacktestConfig` و `BacktestReport` به timeframe/leverage متصل شدند.\n- موتور بک‌تست SL touch را از High/Low واقعی کندل‌های بعد از ورود دنبال می‌کند و فقط از exitReason حدس نمی‌زند.\n- صفحه مستقل حرفه‌ای Trade Report به Terminal Navigation اضافه شد و LONG/SHORT، Entry، Exit، Timeframe، Entry/Exit time، Position size، Leverage، SL، TP، Exit reason، SL touched، PnL، PnL%%، Fees، Funding و Win/Loss را نمایش می‌دهد.\n- گزارش مستقیماً به state.report واقعی بک‌تست متصل است.\n- تست قراردادی TradeResultTest اضافه شد.\n- Verification: gradle testDebugUnitTest و gradle assembleDebug در GitHub Actions سبز شدند و APK Debug نیز ساخته و artifact شد.\n- محدودیت: verification بصری روی دستگاه واقعی در این مرحله انجام نشده است.\n- خارج از scope این تغییر: تکمیل Export CSV/JSON با همه فیلدهای جدید؛ این مورد Complete محسوب نمی‌شود.\n' >> PROJECT_COMMAND.md
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add PROJECT_COMMAND.md
+            git commit -m 'docs: record trade report completion'
+            git push
+          fi
