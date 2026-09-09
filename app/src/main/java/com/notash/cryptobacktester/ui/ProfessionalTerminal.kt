@@ -86,6 +86,7 @@ fun ProfessionalTerminal(themeMode: AppThemeMode, onThemeMode: (AppThemeMode) ->
                     TerminalPage.MARKET -> HomeScreen(fa, market, { market = it }, state.report) { page = it }
                     TerminalPage.MARKETS -> MarketsScreen(fa, market, { market = it; vm.setMarket(it) }) { page = TerminalPage.BACKTEST }
                     TerminalPage.BACKTEST -> BacktestScreen(fa, market, { market = it; vm.setMarket(it) }, timeframe, { timeframe = it }, vm, state)
+                    TerminalPage.REPORT -> TradeByTradeReport(fa, state.report, Modifier.fillMaxSize())
                     TerminalPage.STRATEGY -> StrategyScreen(fa)
                     TerminalPage.INTELLIGENCE -> IntelligenceScreen(fa, market)
                     TerminalPage.AI -> AiScreen(fa, market, state.report)
