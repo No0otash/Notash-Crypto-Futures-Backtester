@@ -1,6 +1,8 @@
 name: Finish Trade Report UI
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -8,6 +10,7 @@ permissions:
 
 jobs:
   integrate-verify:
+    if: ${{ !contains(github.event.head_commit.message, 'connect trade report to terminal navigation') && !contains(github.event.head_commit.message, 'remove temporary trade report integration workflow') }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout main
@@ -15,7 +18,6 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
-
       - name: Integrate report destination
         run: |
           python3 - <<'PY'
@@ -29,13 +31,10 @@ jobs:
                   raise SystemExit('Expected Backtest routing line was not found; no UI file was changed.')
               p.write_text(s.replace(old, new, 1))
           PY
-
       - name: Run unit tests
         run: ./gradlew testDebugUnitTest
-
       - name: Build debug APK
         run: ./gradlew assembleDebug
-
       - name: Commit integration
         run: |
           git config user.name 'github-actions[bot]'
@@ -43,7 +42,6 @@ jobs:
           git add app/src/main/java/com/notash/cryptobacktester/ui/ProfessionalTerminal.kt
           git diff --cached --quiet || git commit -m 'feat: connect trade report to terminal navigation'
           git push origin main
-
       - name: Remove temporary workflow
         if: always()
         run: |
