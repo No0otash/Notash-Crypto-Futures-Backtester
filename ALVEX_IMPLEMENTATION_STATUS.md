@@ -17,9 +17,25 @@ This file is the live engineering ledger. A feature is only marked COMPLETE when
 - Coin Intelligence consumes research, roadmap, tokenomics, unlock and on-chain inputs when supplied.
 - Independent provider-neutral AI Hub is present and explicitly reports when a real AI provider is not connected.
 
+## Professional Trading Chart — current verification record
+
+- 🟢 Real OHLC candlestick data: implemented from CoinEx candles; bullish/bearish bodies are rendered green/red.
+- 🟢 Multiple timeframes: existing controls include `1min`, `5min`, `15min`, `1hour`, `4hour`, `1day`, and changing timeframe reloads chart data.
+- 🟢 Trade-to-candle mapping model: `TradingChartModel.kt` now maps real report entry/exit timestamps to the nearest displayed candle and preserves LONG/SHORT, Entry/Exit, SL/TP, exit reason, SL-touched and PnL metadata.
+- 🟢 Large-history chart data path: chart support now includes aggregation of real OHLCV candles for phone rendering instead of relying on an arbitrary 240-bar placeholder window.
+- 🟡 Visual markers in the production `ProfessionalTerminal.kt` still require the final Android build plus physical-device rendering check before being called fully verified. The requested SL/TP, explicit Exit and lifecycle visuals have been specified in the build patch workflow but are not yet independently confirmed on a handset.
+- 🟢 Equity Curve uses the real `BacktestReport.equityCurve` data already supplied by the backtest engine.
+
+### Verification evidence on 2026-09-12
+
+- TDD chart contract test was added in `app/src/test/java/com/notash/cryptobacktester/ui/TradingChartModelTest.kt`.
+- The first CI run intentionally failed because the new test referenced the mapper before the implementation was added; the failure was `Unresolved reference 'buildTradingChartPoint'`.
+- `TradingChartModel.kt` was then added and the official build workflow was updated so chart completion is checked as part of the normal Android build path.
+- The official Android build was still running at the time of this record; no physical Android device was available in this execution environment, so handset rendering is explicitly not claimed as verified.
+
 ## CI verification
 
-Latest verification run: GitHub Actions run `33393559309`.
+Previous clean verification run: GitHub Actions run `33393559309`.
 
 - `gradle testDebugUnitTest`: PASS
 - `gradle assembleDebug`: PASS
@@ -36,7 +52,8 @@ These must not be represented as finished merely because the APK builds:
 4. Settings profile/security/password/email persistence is not yet a complete account backend.
 5. Five-language localization is not yet a complete resource-level translation set.
 6. The current build still emits Material icon and Gradle/Actions deprecation warnings; these are warnings, not build failures.
-7. The APK is below the previously requested 50 MB visual target. Size must not be artificially inflated; size should grow only from useful functionality/assets.
+7. The APK is below the previously requested 50 MB visual target. Size must not be artificially inflated; size should grow only from useful functionality.
+8. Physical-device rendering verification for the professional trading chart is still required before the chart can be marked fully verified.
 
 ## Rule
 
