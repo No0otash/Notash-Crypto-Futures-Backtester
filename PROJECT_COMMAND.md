@@ -427,8 +427,23 @@
 
 **Exchange، Burn و Treasury walletها نباید کورکورانه به‌عنوان Holder عادی محاسبه شوند.**
 
----
-
 # 13. Independent AI Hub — آیتم 119
 
 AI Hub باید یک Workspace مستقل از Backtester باشد، اما بتواند داده‌های معتبر Backtest، Market Intelligence و Research را در صورت وجود دریافت و تحلیل کند.
+
+---
+
+## Change Log / وضعیت‌های تأییدشده
+
+### 2026-09-09 — Trade Report
+- مدل `TradeResult` دارای داده‌های کامل معامله شامل timeframe، leverage و وضعیت `slTouched` است.
+- موتور Backtest مقدار `slTouched` را از رفتار واقعی کندل‌ها دنبال می‌کند.
+- صفحه `TradeByTradeReport` به `TerminalPage.REPORT` متصل است و گزارش معامله را از `state.report` واقعی نمایش می‌دهد.
+- پوشش تست مدل و گزارش اضافه شده است.
+- CSV/JSON Export با فیلدهای کامل Trade Report در حال تکمیل/Verification است و تا موفقیت Build/Test نباید Complete تلقی شود.
+
+### 2026-09-09 — Trade Report UI Verification
+- بررسی مجدد Repository نشان داد ساخت مجدد صفحه گزارش لازم نیست؛ `TradeByTradeReport.kt` از قبل وجود دارد.
+- UI موجود فیلدهای LONG/SHORT، Entry، Exit، Timeframe، Entry/Exit time، Position size، Leverage، SL، TP، Exit reason، SL touched، PnL، PnL percentage، Fees، Funding و Win/Loss را نمایش می‌دهد.
+- تست قرارداد نهایی `TradeByTradeReportTest.kt` برای کنترل اتصال داده‌های الزامی اضافه شده است.
+- وضعیت 2.4 تا موفقیت Unit Test و `assembleDebug`: 🟡 **در حال Verification**.
