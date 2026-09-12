@@ -16,7 +16,12 @@ class CoinExMarketParsingTest {
             ],"message":"OK"}
         """.trimIndent()
 
-        val result = CoinExApi.parseFuturesMarkets(body)
+        val result = try {
+            CoinExApi.parseFuturesMarkets(body)
+        } catch (error: RuntimeException) {
+            error.printStackTrace()
+            throw error
+        }
 
         assertEquals(3, result.size)
         assertEquals("BTCUSDT", result[0].market)
