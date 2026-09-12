@@ -3,7 +3,6 @@ package com.notash.cryptobacktester.export
 import com.notash.cryptobacktester.core.BacktestReport
 import com.notash.cryptobacktester.core.Side
 import com.notash.cryptobacktester.core.TradeResult
-import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -67,19 +66,26 @@ class BacktestExportManagerTest {
 
     @Test
     fun json_contains_all_trade_report_fields_and_values() {
-        val root = JSONObject(BacktestExportManager.json(report))
-        val exported = root.getJSONArray("trades").getJSONObject(0)
+        val json = BacktestExportManager.json(report)
 
-        assertEquals(1, exported.getInt("tradeNumber"))
-        assertEquals("SHORT", exported.getString("side"))
-        assertEquals("1h", exported.getString("timeframe"))
-        assertEquals(1.5, exported.getDouble("positionSize"), 0.0)
-        assertEquals(5.0, exported.getDouble("leverage"), 0.0)
-        assertEquals(210.0, exported.getDouble("stopLoss"), 0.0)
-        assertEquals(180.0, exported.getDouble("takeProfit"), 0.0)
-        assertEquals("SL", exported.getString("exitReason"))
-        assertTrue(exported.getBoolean("slTouched"))
-        assertEquals(trade.pnlPercent, exported.getDouble("pnlPercent"), 0.000001)
-        assertEquals("WIN", exported.getString("status"))
+        assertTrue(json.contains("\"tradeNumber\": 1"))
+        assertTrue(json.contains("\"side\": \"SHORT\""))
+        assertTrue(json.contains("\"entryPrice\": 200.0"))
+        assertTrue(json.contains("\"exitPrice\": 190.0"))
+        assertTrue(json.contains("\"timeframe\": \"1h\""))
+        assertTrue(json.contains("\"entryTime\": 1000"))
+        assertTrue(json.contains("\"exitTime\": 2000"))
+        assertTrue(json.contains("\"positionSize\": 1.5"))
+        assertTrue(json.contains("\"leverage\": 5.0"))
+        assertTrue(json.contains("\"stopLoss\": 210.0"))
+        assertTrue(json.contains("\"takeProfit\": 180.0"))
+        assertTrue(json.contains("\"exitReason\": \"SL\""))
+        assertTrue(json.contains("\"slTouched\": true"))
+        assertTrue(json.contains("\"grossPnl\": 15.0"))
+        assertTrue(json.contains("\"netPnl\": 13.5"))
+        assertTrue(json.contains("\"pnlPercent\": ${trade.pnlPercent}"))
+        assertTrue(json.contains("\"fees\": 1.25"))
+        assertTrue(json.contains("\"funding\": 0.25"))
+        assertTrue(json.contains("\"status\": \"WIN\""))
     }
 }
