@@ -35,17 +35,70 @@ class SupabaseAuth(private val context: Context) {
         Result(value = Unit)
     }
 
-    suspend fun signIn(email: String, password: String): Result<Session> = withContext(Dispatchers.IO) { requestSession("/auth/v1/token?grant_type=password", JSONObject().put("email", email.trim()).put("password", password)) }
-    suspend fun signUp(email: String, password: String): Result<Session> = withContext(Dispatchers.IO) { requestSession("/auth/v1/signup", JSONObject().put("email", email.trim()).put("password", password)) }
+    suspend fun signIn(email: String, password: String): Result<Session> = withContext(Dispatchers.IO) {
+        requestSession("/auth/v1/token?grant_type=password", JSONObject().put("email", email.trim()).put("password", password))
+    }
+
+    /**
+     * Creates the account and immediately establishes a session.
+     *
+     * The project is intentionally configured for password auth without mandatory
+     * email confirmation. If Supabase returns a user without an access token, we
+     * retry password sign-in so registration remains a single-step flow. This also
+     * keeps the client compatible with Supabase configurations that return a user
+     * object without a session from signup.
+     */
+    suspend fun signUp(email: String, password: String): Result<Session> = withContext(Dispatchers.IO) {
+        val normalizedEmail = email.trim()
+        val (code, text) = execute(
+            baseRequest("/auth/v1/signup")
+                .post(JSONObject().put("email", normalizedEmail).put("password", password).toString().toRequestBody(jsonType))
+                .build()
+        )
+        if (code !in 200..299) return@withContext Result(error = parseError(text))
+
+        val response = runCatching { JSONObject(text) }.getOrNull()
+            ?: return@withContext Result(error = "Invalid registration response")
+        val accessToken = response.optString("access_token")
+        if (accessToken.isNotBlank()) {
+            return@withContext parseSession(response)
+        }
+
+        // No session was returned. Try normal password sign-in immediately.
+        // If this fails with "email not confirmed", the Supabase project still
+        // has confirmation enabled and must be changed server-side.
+        signIn(normalizedEmail, password)
+    }
+
     suspend fun refresh(): Result<Session> = withContext(Dispatchers.IO) { val refresh = prefs.getString("refresh_token", null) ?: return@withContext Result(error = "No saved session"); requestSession("/auth/v1/token?grant_type=refresh_token", JSONObject().put("refresh_token", refresh)) }
     suspend fun sendPasswordReset(email: String): Result<Unit> = withContext(Dispatchers.IO) { val request = baseRequest("/auth/v1/recover").post(JSONObject().put("email", email.trim()).toString().toRequestBody(jsonType)).build(); execute(request).let { if (it.first in 200..299) Result(value = Unit) else Result(error = parseError(it.second)) } }
     suspend fun updatePassword(newPassword: String): Result<Unit> = withContext(Dispatchers.IO) { val token = currentSession()?.accessToken ?: return@withContext Result(error = "Please sign in again"); val request = baseRequest("/auth/v1/user", token).put(JSONObject().put("password", newPassword).toString().toRequestBody(jsonType)).build(); execute(request).let { if (it.first in 200..299) Result(value = Unit) else Result(error = parseError(it.second)) } }
     suspend fun requestEmailChange(newEmail: String): Result<Unit> = withContext(Dispatchers.IO) { val token = currentSession()?.accessToken ?: return@withContext Result(error = "Please sign in again"); val request = baseRequest("/auth/v1/user", token).put(JSONObject().put("email", newEmail.trim()).toString().toRequestBody(jsonType)).build(); execute(request).let { if (it.first in 200..299) Result(value = Unit) else Result(error = parseError(it.second)) } }
 
-    private fun requestSession(path: String, payload: JSONObject): Result<Session> { val (code, text) = execute(baseRequest(path).post(payload.toString().toRequestBody(jsonType)).build()); if (code !in 200..299) return Result(error = parseError(text)); return try { val o = JSONObject(text); val s = Session(o.optString("access_token"), o.optString("refresh_token"), o.optJSONObject("user")?.optString("id") ?: "", o.optJSONObject("user")?.optString("email")); if (s.accessToken.isBlank()) Result(error = "Authentication succeeded without a session") else { save(s); Result(value = s) } } catch (_: Exception) { Result(error = "Invalid authentication response") } }
+    private fun requestSession(path: String, payload: JSONObject): Result<Session> {
+        val (code, text) = execute(baseRequest(path).post(payload.toString().toRequestBody(jsonType)).build())
+        if (code !in 200..299) return Result(error = parseError(text))
+        return runCatching { parseSession(JSONObject(text)) }.getOrElse { Result(error = "Invalid authentication response") }
+    }
+
+    private fun parseSession(o: JSONObject): Result<Session> {
+        val user = o.optJSONObject("user")
+        val s = Session(
+            o.optString("access_token"),
+            o.optString("refresh_token"),
+            user?.optString("id") ?: "",
+            user?.optString("email")
+        )
+        return if (s.accessToken.isBlank()) Result(error = "Authentication succeeded without a session") else { save(s); Result(value = s) }
+    }
+
     private fun baseRequest(path: String, token: String? = null) = Request.Builder().url(baseUrl + path).header("apikey", anonKey).header("Accept", "application/json").apply { if (token != null) header("Authorization", "Bearer $token") }
     private fun execute(request: Request): Pair<Int, String> = try { client.newCall(request).execute().use { it.code to (it.body?.string() ?: "") } } catch (e: Exception) { 599 to (e.message ?: "Network error") }
-    private fun parseError(text: String): String = try { val o = JSONObject(text); o.optString("msg").ifBlank { o.optString("message") }.ifBlank { "Authentication failed" } } catch (_: Exception) { "Authentication failed" }
+    private fun parseError(text: String): String = try {
+        val o = JSONObject(text)
+        val message = o.optString("msg").ifBlank { o.optString("message") }.ifBlank { o.optString("error_description") }.ifBlank { "Authentication failed" }
+        if (message.contains("email not confirmed", ignoreCase = true)) "ورود بدون تأیید ایمیل فعال نیست؛ تنظیم تأیید ایمیل در سرویس احراز هویت باید خاموش باشد." else message
+    } catch (_: Exception) { "Authentication failed" }
 }
 
 fun sha256(value: String): String = MessageDigest.getInstance("SHA-256").digest(value.toByteArray()).joinToString("") { "%02x".format(it) }
