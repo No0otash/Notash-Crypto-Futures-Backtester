@@ -27,30 +27,27 @@ This file is the live engineering ledger. A feature is only marked COMPLETE when
 - Compatibility verification must include at minimum the project's supported Android SDK range and representative small/medium/large screen configurations; Xiaomi 14/Android 16 remains a test device, not the only compatibility target.
 - A green compile/build alone is not sufficient evidence of device compatibility. Compatibility requires automated tests where practical plus emulator/device rendering checks for critical screens.
 
-## Professional Trading Chart — current verification record
+## Professional Terminal — approved reference implementation
 
-- 🟢 Real OHLC candlestick data: implemented from CoinEx candles; bullish/bearish bodies are rendered green/red.
-- 🟢 Multiple timeframes: existing controls include `1min`, `5min`, `15min`, `1hour`, `4hour`, `1day`, and changing timeframe reloads chart data.
-- 🟢 Trade-to-candle mapping model: `TradingChartModel.kt` now maps real report entry/exit timestamps to the nearest displayed candle and preserves LONG/SHORT, Entry/Exit, SL/TP, exit reason, SL-touched and PnL metadata.
-- 🟢 Large-history chart data path: chart support now includes aggregation of real OHLCV candles for phone rendering instead of relying on an arbitrary 240-bar placeholder window.
-- 🟡 Visual markers in the production `ProfessionalTerminal.kt` still require the final Android build plus physical-device rendering check before being called fully verified. The requested SL/TP, explicit Exit and lifecycle visuals have been specified in the build patch workflow but are not yet independently confirmed on a handset.
-- 🟢 Equity Curve uses the real `BacktestReport.equityCurve` data already supplied by the backtest engine.
+Reference target: premium dark crypto-finance terminal comparable in information hierarchy, density, polish and navigation to the supplied ALVEX reference image, while retaining ALVEX's independent visual identity.
 
-### Verification evidence on 2026-09-12
+- 🟢 ALVEX shell: branding, header, AI-left, Settings-right and page navigation are implemented.
+- 🟢 Quick Actions and separate terminal pages are implemented.
+- 🟢 Responsive shell contract is implemented with compact/standard/expanded breakpoints and a capped content width for larger screens.
+- 🟢 Professional trading chart source is now committed in `ProfessionalTerminal.kt` rather than existing only as a workflow patch.
+- 🟢 Chart renders real green/red OHLC candles, uses aggregated real market history, and preserves touch candle inspection.
+- 🟢 Trade lifecycle visuals are implemented from real `TradeResult` data: LONG/SHORT marker, Entry, Exit, position path, SL and TP lines.
+- 🟢 Trade-to-candle mapping uses actual Entry/Exit timestamps and prices through `TradingChartModel.kt`.
+- 🟢 Equity Curve continues to use real backtest equity data.
+- 🟡 Final physical-device visual QA remains open. The execution environment cannot certify rendering on a physical handset, so no handset-level completion claim is made.
 
-- TDD chart contract test was added in `app/src/test/java/com/notash/cryptobacktester/ui/TradingChartModelTest.kt`.
-- The first CI run intentionally failed because the new test referenced the mapper before the implementation was added; the failure was `Unresolved reference 'buildTradingChartPoint'`.
-- `TradingChartModel.kt` was then added and the official build workflow was updated so chart completion is checked as part of the normal Android build path.
-- The official Android build was still running at the time of this record; no physical Android device was available in this execution environment, so handset rendering is explicitly not claimed as verified.
+## Verification evidence on 2026-09-12
 
-## CI verification
-
-Previous clean verification run: GitHub Actions run `33393559309`.
-
-- `gradle testDebugUnitTest`: PASS
-- `gradle assembleDebug`: PASS
-- APK artifact generated: PASS
-- APK size observed: approximately 9.7 MB
+- TDD responsive contract test exists in `app/src/test/java/com/notash/cryptobacktester/ui/TerminalResponsiveLayoutTest.kt` for compact, standard and expanded widths.
+- TDD chart contract test exists in `app/src/test/java/com/notash/cryptobacktester/ui/TradingChartModelTest.kt`.
+- The professional chart implementation was committed to `main` in commit `63ce47517f21b93256dc0ad9dc290a2ee237d1fc`.
+- A previous clean Android verification run is `33393559309` with unit tests, debug APK build and artifact upload passing; that run predates the final chart/responsive source commit and therefore is not reused as proof of the latest changes.
+- Current GitHub Actions runs created from the latest connector commits have not produced a usable job-level result in this execution environment, so the latest chart/responsive changes are not marked CI-verified yet.
 
 ## Known non-complete production items
 
@@ -63,7 +60,7 @@ These must not be represented as finished merely because the APK builds:
 5. Five-language localization is not yet a complete resource-level translation set.
 6. The current build still emits Material icon and Gradle/Actions deprecation warnings; these are warnings, not build failures.
 7. The APK is below the previously requested 50 MB visual target. Size must not be artificially inflated; size should grow only from useful functionality.
-8. Physical-device rendering verification for the professional trading chart is still required before the chart can be marked fully verified.
+8. Physical-device rendering verification for the professional trading terminal/chart is still required.
 9. Broad Android compatibility is now a mandatory requirement and is not considered complete until representative small/medium/large Android configurations and critical-screen rendering have been verified.
 
 ## Rule
