@@ -50,6 +50,14 @@ private var Divider = Color(0xFF263343)
 private var PrimaryText = Color.White
 private data class Quote(val symbol: String, val price: Double, val change: Double, val volume: Double)
 
+private enum class TerminalLayoutMode { COMPACT, STANDARD, EXPANDED }
+
+internal fun terminalLayoutMode(widthDp: Int): TerminalLayoutMode = when {
+    widthDp < 600 -> TerminalLayoutMode.COMPACT
+    widthDp < 840 -> TerminalLayoutMode.STANDARD
+    else -> TerminalLayoutMode.EXPANDED
+}
+
 @Composable
 fun ProfessionalTerminal(themeMode: AppThemeMode, onThemeMode: (AppThemeMode) -> Unit) {
     val dark = themeMode == AppThemeMode.DARK
@@ -81,7 +89,8 @@ fun ProfessionalTerminal(themeMode: AppThemeMode, onThemeMode: (AppThemeMode) ->
             return@MaterialTheme
         }
         Scaffold(containerColor = Bg, topBar = { Header(fa, page, { page = TerminalPage.AI }, { settings = true }, { fa = !fa }) }, bottomBar = { TerminalNavigation(page, { page = it }, fa) }) { padding ->
-            Box(Modifier.fillMaxSize().padding(padding)) {
+            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.TopCenter) {
+                Box(Modifier.fillMaxWidth().widthIn(max = 720.dp)) {
                 when (page) {
                     TerminalPage.MARKET -> HomeScreen(fa, market, { market = it }, state.report) { page = it }
                     TerminalPage.MARKETS -> MarketsScreen(fa, market, { market = it; vm.setMarket(it) }) { page = TerminalPage.BACKTEST }
@@ -90,6 +99,7 @@ fun ProfessionalTerminal(themeMode: AppThemeMode, onThemeMode: (AppThemeMode) ->
                     TerminalPage.STRATEGY -> StrategyScreen(fa)
                     TerminalPage.INTELLIGENCE -> IntelligenceScreen(fa, market)
                     TerminalPage.AI -> AiScreen(fa, market, state.report)
+                }
                 }
             }
         }
@@ -133,7 +143,7 @@ fun ProfessionalTerminal(themeMode: AppThemeMode, onThemeMode: (AppThemeMode) ->
 
 @Composable private fun MarketsScreen(fa: Boolean, market: String, onMarket: (String) -> Unit, open: () -> Unit) { val repo = remember { CoinExRepository() }; val scope = rememberCoroutineScope(); var query by rememberSaveable { mutableStateOf(market) }; var quote by remember { mutableStateOf<Quote?>(null) }; var loading by remember { mutableStateOf(false) }; fun load() { scope.launch { loading = true; val ticker = runCatching { repo.loadLatestTicker(query.uppercase()) }.getOrNull(); quote = ticker?.let { Quote(query.uppercase(), it.last, it.changeRate * 100.0, it.volume) }; loading = false } }; LaunchedEffect(Unit) { load() }; LazyColumn(Modifier.fillMaxSize().background(Bg).padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) { item { SectionTitle(if (fa) "بازارها" else "Markets", "Real-time CoinEx spot market") }; item { Row(verticalAlignment = Alignment.CenterVertically) { OutlinedTextField(query, { value -> query = value.uppercase() }, Modifier.weight(1f), singleLine = true, label = { Text("Market") }); Spacer(Modifier.width(7.dp)); IconButton(onClick = { load() }) { Icon(Icons.Outlined.Refresh, null, tint = Mint) } } }; item { if (loading) Text("Loading…", color = Muted) else quote?.let { QuoteRow(it) { onMarket(it.symbol); open() } } }; item { Text(if (fa) "بازارهای سریع" else "Quick markets", color = Muted, fontSize = 11.sp) }; items(listOf("BTCUSDT", "ETHUSDT", "SOLUSDT", "DOGEUSDT", "PEPEUSDT")) { symbol -> OutlinedButton(onClick = { query = symbol; onMarket(symbol); load() }, modifier = Modifier.fillMaxWidth()) { Text(symbol) } } } }
 
-@Composable private fun BacktestScreen(fa: Boolean, market: String, onMarket: (String) -> Unit, timeframe: String, onTimeframe: (String) -> Unit, vm: BacktestViewModel, state: BacktestUiState) { val repo = remember { CoinExRepository() }; val scope = rememberCoroutineScope(); var candles by remember { mutableStateOf<List<Candle>>(emptyList()) }; var selected by remember { mutableStateOf<Int?>(null) }; fun loadChart() { scope.launch { candles = runCatching { repo.loadKlines(market, timeframe, 240) }.getOrDefault(emptyList()) } }; LaunchedEffect(market, timeframe) { vm.setMarket(market); vm.setTimeframe(timeframe); loadChart() }; LazyColumn(Modifier.fillMaxSize().background(Bg).padding(14.dp), verticalArrangement = Arrangement.spacedBy(11.dp), contentPadding = PaddingValues(bottom = 24.dp)) { item { SectionTitle("Backtest Terminal", "Real OHLC • touch chart • robot diagnostics") }; item { Row(verticalAlignment = Alignment.CenterVertically) { OutlinedTextField(market, { value -> onMarket(value.uppercase()) }, Modifier.weight(1f), singleLine = true, label = { Text("Market") }); Spacer(Modifier.width(7.dp)); IconButton(onClick = { loadChart() }) { Icon(Icons.Outlined.Refresh, null, tint = Mint) } } }; item { Timeframes(timeframe, onTimeframe) }; item { CandleChart(candles, state.report?.trades ?: emptyList(), selected, { selected = it }, Modifier.fillMaxWidth().height(310.dp)) }; item { selected?.let { index -> candles.getOrNull(index)?.let { candle -> CandleInfo(index, candle) } } }; item { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) { Box(Modifier.weight(1f)) { Metric("ROI", state.report?.roiPercent?.let { "%.2f%%".format(it) } ?: "—", Green) }; Box(Modifier.weight(1f)) { Metric("PnL", state.report?.netPnl?.let { "%.2f".format(it) } ?: "—", if ((state.report?.netPnl ?: 0.0) >= 0) Green else Red) }; Box(Modifier.weight(1f)) { Metric("Win", state.report?.winRatePercent?.let { "%.1f%%".format(it) } ?: "—", Gold) } } }; item { Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(20.dp)) { Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) { Text(if (fa) "کنترل ربات و خطایابی" else "Robot control & diagnostics", color = PrimaryText, fontWeight = FontWeight.Bold); Text(state.status, color = Muted, fontSize = 11.sp); state.error?.let { message -> Text(message, color = Red, fontSize = 10.sp) }; Button(onClick = { vm.runBacktest() }, modifier = Modifier.fillMaxWidth(), enabled = !state.isRunning) { Icon(Icons.Outlined.PlayArrow, null); Spacer(Modifier.width(6.dp)); Text(if (fa) "اجرای بک‌تست واقعی" else "Run real backtest") } } } }; item { state.report?.let { report -> TradeList(report.trades, fa) } } } }
+@Composable private fun BacktestScreen(fa: Boolean, market: String, onMarket: (String) -> Unit, timeframe: String, onTimeframe: (String) -> Unit, vm: BacktestViewModel, state: BacktestUiState) { val repo = remember { CoinExRepository() }; val scope = rememberCoroutineScope(); var candles by remember { mutableStateOf<List<Candle>>(emptyList()) }; var selected by remember { mutableStateOf<Int?>(null) }; fun loadChart() { scope.launch { val end = System.currentTimeMillis(); val start = end - 30L * 24L * 60L * 60L * 1000L; val history = com.notash.cryptobacktester.data.HistoricalDataManager(); candles = runCatching { history.downloadKlines(market, timeframe, start, end) }.getOrDefault(emptyList()) } }; LaunchedEffect(market, timeframe) { vm.setMarket(market); vm.setTimeframe(timeframe); loadChart() }; LazyColumn(Modifier.fillMaxSize().background(Bg).padding(14.dp), verticalArrangement = Arrangement.spacedBy(11.dp), contentPadding = PaddingValues(bottom = 24.dp)) { item { SectionTitle("Backtest Terminal", "Real OHLC • touch chart • robot diagnostics") }; item { Row(verticalAlignment = Alignment.CenterVertically) { OutlinedTextField(market, { value -> onMarket(value.uppercase()) }, Modifier.weight(1f), singleLine = true, label = { Text("Market") }); Spacer(Modifier.width(7.dp)); IconButton(onClick = { loadChart() }) { Icon(Icons.Outlined.Refresh, null, tint = Mint) } } }; item { Timeframes(timeframe, onTimeframe) }; item { CandleChart(candles, state.report?.trades ?: emptyList(), selected, { selected = it }, Modifier.fillMaxWidth().height(310.dp)) }; item { selected?.let { index -> candles.getOrNull(index)?.let { candle -> CandleInfo(index, candle) } } }; item { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) { Box(Modifier.weight(1f)) { Metric("ROI", state.report?.roiPercent?.let { "%.2f%%".format(it) } ?: "—", Green) }; Box(Modifier.weight(1f)) { Metric("PnL", state.report?.netPnl?.let { "%.2f".format(it) } ?: "—", if ((state.report?.netPnl ?: 0.0) >= 0) Green else Red) }; Box(Modifier.weight(1f)) { Metric("Win", state.report?.winRatePercent?.let { "%.1f%%".format(it) } ?: "—", Gold) } } }; item { Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(20.dp)) { Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) { Text(if (fa) "کنترل ربات و خطایابی" else "Robot control & diagnostics", color = PrimaryText, fontWeight = FontWeight.Bold); Text(state.status, color = Muted, fontSize = 11.sp); state.error?.let { message -> Text(message, color = Red, fontSize = 10.sp) }; Button(onClick = { vm.runBacktest() }, modifier = Modifier.fillMaxWidth(), enabled = !state.isRunning) { Icon(Icons.Outlined.PlayArrow, null); Spacer(Modifier.width(6.dp)); Text(if (fa) "اجرای بک‌تست واقعی" else "Run real backtest") } } } }; item { state.report?.let { report -> TradeList(report.trades, fa) } } } }
 
 @Composable private fun StrategyScreen(fa: Boolean) { var name by rememberSaveable { mutableStateOf("Advanced Pullback") }; var entry by rememberSaveable { mutableStateOf("LWMA20 > LWMA50 + ATR") }; var exit by rememberSaveable { mutableStateOf("SL 1.5 ATR / TP 3 ATR") }; var risk by rememberSaveable { mutableStateOf("1") }; var saved by rememberSaveable { mutableStateOf(false) }; LazyColumn(Modifier.fillMaxSize().background(Bg).padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) { item { SectionTitle(if (fa) "مدیریت استراتژی" else "Strategy Lab", "Editable strategy workspace") }; item { Field("Strategy name", name) { name = it } }; item { Field("Entry rules", entry) { entry = it } }; item { Field("Exit / SL / TP", exit) { exit = it } }; item { Field("Risk %", risk) { risk = it } }; item { Button(onClick = { saved = true }, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Outlined.Check, null); Spacer(Modifier.width(6.dp)); Text(if (fa) "ذخیره و فعال‌سازی" else "Save & Activate") } }; item { if (saved) Text(if (fa) "Strategy فعال است." else "Strategy is active.", color = Green) }; item { OutlinedButton(onClick = { }, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Outlined.Add, null); Spacer(Modifier.width(6.dp)); Text(if (fa) "Import Robot / JSON / ZIP" else "Import Robot / JSON / ZIP") } } } }
 
@@ -153,12 +163,81 @@ fun ProfessionalTerminal(themeMode: AppThemeMode, onThemeMode: (AppThemeMode) ->
 @Composable private fun IntelligenceTile(icon: ImageVector, title: String, subtitle: String) { Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = Panel)) { Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) { Icon(icon, null, tint = Mint); Spacer(Modifier.width(10.dp)); Column { Text(title, color = PrimaryText, fontWeight = FontWeight.Bold); Text(subtitle, color = Muted, fontSize = 10.sp) } } } }
 
 @Composable private fun CandleChart(candles: List<Candle>, trades: List<TradeResult>, selected: Int?, onSelect: (Int) -> Unit, modifier: Modifier) {
-    if (candles.isEmpty()) { Box(modifier.background(Panel2, RoundedCornerShape(18.dp)), contentAlignment = Alignment.Center) { Text("Loading CoinEx candles…", color = Muted) }; return }
-    Canvas(modifier.background(Panel2, RoundedCornerShape(18.dp)).pointerInput(candles) { detectTapGestures { point -> onSelect(((point.x / size.width) * candles.size).toInt().coerceIn(0, candles.lastIndex)) } }) {
-        val minPrice = candles.minOf { it.low }; val maxPrice = candles.maxOf { it.high }; val range = (maxPrice - minPrice).takeIf { it > 0 } ?: 1.0; val step = size.width / candles.size; val bodyWidth = (step * 0.58f).coerceAtLeast(2f)
+    if (candles.isEmpty()) {
+        Box(modifier.background(Panel2, RoundedCornerShape(18.dp)), contentAlignment = Alignment.Center) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                Text("Loading CoinEx market data…", color = PrimaryText, fontWeight = FontWeight.Bold)
+                Text("OHLC / trade diagnostics", color = Muted, fontSize = 9.sp)
+            }
+        }
+        return
+    }
+    val renderCandles = aggregateCandlesForChart(candles, 600)
+    val points = trades.mapNotNull { runCatching { buildTradingChartPoint(renderCandles, it) }.getOrNull() }
+    Canvas(modifier.background(Panel2, RoundedCornerShape(18.dp)).pointerInput(renderCandles) {
+        detectTapGestures { point -> onSelect(((point.x / size.width) * renderCandles.size).toInt().coerceIn(0, renderCandles.lastIndex)) }
+    }) {
+        val values = buildList {
+            addAll(renderCandles.flatMap { listOf(it.low, it.high) })
+            points.forEach { add(it.entryPrice); add(it.exitPrice); if (it.stopLoss > 0) add(it.stopLoss); if (it.takeProfit > 0) add(it.takeProfit) }
+        }
+        val minPrice = values.minOrNull() ?: 0.0
+        val maxPrice = values.maxOrNull() ?: 1.0
+        val range = (maxPrice - minPrice).takeIf { it > 0 } ?: 1.0
+        val step = size.width / renderCandles.size
+        val bodyWidth = (step * 0.58f).coerceAtLeast(2f)
         fun y(price: Double): Float = size.height - ((price - minPrice) / range * size.height).toFloat()
-        candles.forEachIndexed { index, candle -> val x = index * step + step / 2f; val bullish = candle.close >= candle.open; val candleColor = if (bullish) Green else Red; val top = y(maxOf(candle.open, candle.close)); val bottom = y(minOf(candle.open, candle.close)); drawLine(candleColor, Offset(x, y(candle.high)), Offset(x, y(candle.low)), 1.5f); drawRect(candleColor, Offset(x - bodyWidth / 2f, top), androidx.compose.ui.geometry.Size(bodyWidth, maxOf(2f, bottom - top))); if (selected == index) drawLine(PrimaryText, Offset(x, 0f), Offset(x, size.height), 1f) }
-        trades.forEach { trade -> val index = candles.indices.minByOrNull { candleIndex -> abs(candles[candleIndex].timestamp - trade.entryTime) } ?: return@forEach; val x = index * step + step / 2f; drawCircle(if (trade.netPnl >= 0) Green else Red, 5f, Offset(x, y(trade.entryPrice))) }
+
+        for (g in 1..4) {
+            val gy = size.height * g / 5f
+            drawLine(Divider, Offset(0f, gy), Offset(size.width, gy), 1f)
+        }
+
+        renderCandles.forEachIndexed { index, candle ->
+            val x = index * step + step / 2f
+            val candleColor = if (candle.close >= candle.open) Green else Red
+            val top = y(maxOf(candle.open, candle.close))
+            val bottom = y(minOf(candle.open, candle.close))
+            drawLine(candleColor, Offset(x, y(candle.high)), Offset(x, y(candle.low)), 1.5f)
+            drawRect(candleColor, Offset(x - bodyWidth / 2f, top), androidx.compose.ui.geometry.Size(bodyWidth, maxOf(2f, bottom - top)))
+            if (selected == index) {
+                drawLine(PrimaryText, Offset(x, 0f), Offset(x, size.height), 1.5f)
+                drawLine(PrimaryText, Offset(0f, y(candle.close)), Offset(size.width, y(candle.close)), 1f)
+            }
+        }
+
+        points.forEach { point ->
+            val entryX = point.entryIndex * step + step / 2f
+            val exitX = point.exitIndex * step + step / 2f
+            val sideColor = if (point.side == com.notash.cryptobacktester.core.Side.LONG) Green else Red
+            drawLine(sideColor, Offset(entryX, y(point.entryPrice)), Offset(exitX, y(point.exitPrice)), 2.5f)
+            if (point.stopLoss > 0) drawLine(Red.copy(alpha = .78f), Offset(entryX, y(point.stopLoss)), Offset(exitX, y(point.stopLoss)), 1.5f)
+            if (point.takeProfit > 0) drawLine(Gold.copy(alpha = .92f), Offset(entryX, y(point.takeProfit)), Offset(exitX, y(point.takeProfit)), 1.5f)
+
+            val entryY = y(point.entryPrice)
+            if (point.side == com.notash.cryptobacktester.core.Side.LONG) {
+                drawLine(Green, Offset(entryX, entryY + 10f), Offset(entryX, entryY - 2f), 3f)
+                drawLine(Green, Offset(entryX, entryY - 2f), Offset(entryX - 5f, entryY + 3f), 3f)
+                drawLine(Green, Offset(entryX, entryY - 2f), Offset(entryX + 5f, entryY + 3f), 3f)
+            } else {
+                drawLine(Red, Offset(entryX, entryY - 10f), Offset(entryX, entryY + 2f), 3f)
+                drawLine(Red, Offset(entryX, entryY + 2f), Offset(entryX - 5f, entryY - 3f), 3f)
+                drawLine(Red, Offset(entryX, entryY + 2f), Offset(entryX + 5f, entryY - 3f), 3f)
+            }
+            drawCircle(sideColor, 7f, Offset(entryX, entryY), style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2f))
+            val exitY = y(point.exitPrice)
+            drawCircle(PrimaryText, 7f, Offset(exitX, exitY), style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2f))
+            drawCircle(sideColor, 3f, Offset(exitX, exitY))
+        }
+    }
+    Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("● LONG", color = Green, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+        Text("● SHORT", color = Red, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+        Text("○ ENTRY / EXIT", color = PrimaryText, fontSize = 9.sp)
+        Text("SL", color = Red, fontSize = 9.sp)
+        Text("TP", color = Gold, fontSize = 9.sp)
+        Spacer(Modifier.weight(1f))
+        Text("${points.size} trades", color = Muted, fontSize = 9.sp)
     }
 }
 
