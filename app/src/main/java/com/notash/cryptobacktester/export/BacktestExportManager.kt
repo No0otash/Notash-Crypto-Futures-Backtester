@@ -6,12 +6,14 @@ import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import com.notash.cryptobacktester.core.BacktestReport
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import org.json.JSONArray
-import org.json.JSONObject
 
 enum class ExportStorageMode {
     MEDIA_STORE_DOWNLOADS,
@@ -57,46 +59,49 @@ object BacktestExportManager {
     }
 
     fun json(report: BacktestReport): String {
-        val root = JSONObject()
-        root.put("initialBalance", report.initialBalance)
-        root.put("finalBalance", report.finalBalance)
-        root.put("netPnl", report.netPnl)
-        root.put("roiPercent", report.roiPercent)
-        root.put("maxDrawdownPercent", report.maxDrawdownPercent)
-        root.put("winRatePercent", report.winRatePercent)
-        root.put("profitFactor", if (report.profitFactor.isFinite()) report.profitFactor else JSONObject.NULL)
-        root.put("totalFees", report.totalFees)
-        root.put("totalFunding", report.totalFunding)
-        root.put("timeframe", report.timeframe)
-        root.put("leverage", report.leverage)
-        root.put("equityCurve", JSONArray(report.equityCurve))
-
-        val trades = JSONArray()
-        report.trades.forEachIndexed { index, t ->
-            trades.put(JSONObject().apply {
-                put("tradeNumber", index + 1)
-                put("side", t.side.name)
-                put("entryPrice", t.entryPrice)
-                put("exitPrice", t.exitPrice)
-                put("timeframe", t.timeframe)
-                put("entryTime", t.entryTime)
-                put("exitTime", t.exitTime)
-                put("positionSize", t.quantity)
-                put("leverage", t.leverage)
-                put("stopLoss", t.stopLoss)
-                put("takeProfit", t.takeProfit)
-                put("exitReason", t.exitReason)
-                put("slTouched", t.slTouched)
-                put("grossPnl", t.grossPnl)
-                put("netPnl", t.netPnl)
-                put("pnlPercent", t.pnlPercent)
-                put("fees", t.fees)
-                put("funding", t.funding)
-                put("status", if (t.isWin) "WIN" else "LOSS")
+        val root = buildJsonObject {
+            put("initialBalance", report.initialBalance)
+            put("finalBalance", report.finalBalance)
+            put("netPnl", report.netPnl)
+            put("roiPercent", report.roiPercent)
+            put("maxDrawdownPercent", report.maxDrawdownPercent)
+            put("winRatePercent", report.winRatePercent)
+            if (report.profitFactor.isFinite()) put("profitFactor", report.profitFactor)
+            else put("profitFactor", null)
+            put("totalFees", report.totalFees)
+            put("totalFunding", report.totalFunding)
+            put("timeframe", report.timeframe)
+            put("leverage", report.leverage)
+            put("equityCurve", buildJsonArray {
+                report.equityCurve.forEach { add(kotlinx.serialization.json.JsonPrimitive(it)) }
+            })
+            put("trades", buildJsonArray {
+                report.trades.forEachIndexed { index, t ->
+                    add(buildJsonObject {
+                        put("tradeNumber", index + 1)
+                        put("side", t.side.name)
+                        put("entryPrice", t.entryPrice)
+                        put("exitPrice", t.exitPrice)
+                        put("timeframe", t.timeframe)
+                        put("entryTime", t.entryTime)
+                        put("exitTime", t.exitTime)
+                        put("positionSize", t.quantity)
+                        put("leverage", t.leverage)
+                        put("stopLoss", t.stopLoss)
+                        put("takeProfit", t.takeProfit)
+                        put("exitReason", t.exitReason)
+                        put("slTouched", t.slTouched)
+                        put("grossPnl", t.grossPnl)
+                        put("netPnl", t.netPnl)
+                        put("pnlPercent", t.pnlPercent)
+                        put("fees", t.fees)
+                        put("funding", t.funding)
+                        put("status", if (t.isWin) "WIN" else "LOSS")
+                    })
+                }
             })
         }
-        root.put("trades", trades)
-        return root.toString(2)
+        return Json { prettyPrint = true }.encodeToString(kotlinx.serialization.json.JsonObject.serializer(), root)
     }
 
     private fun csvCell(value: String): String {
