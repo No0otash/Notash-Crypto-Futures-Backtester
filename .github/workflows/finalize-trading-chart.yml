@@ -1,0 +1,177 @@
+name: Finalize Professional Trading Chart
+
+on:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    if: ${{ !contains(github.event.head_commit.message, 'feat: complete professional trading chart') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Setup JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+      - name: Patch chart implementation
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          path = Path('app/src/main/java/com/notash/cryptobacktester/ui/ProfessionalTerminal.kt')
+          text = path.read_text(encoding='utf-8')
+
+          start = text.find('@Composable private fun CandleChart(')
+          end = text.find('@Composable private fun CandleInfo', start)
+          if start < 0 or end < 0:
+              raise SystemExit('CandleChart block not found')
+
+          chart = '''@Composable private fun CandleChart(candles: List<Candle>, trades: List<TradeResult>, selected: Int?, onSelect: (Int) -> Unit, modifier: Modifier) {
+    if (candles.isEmpty()) {
+        Box(modifier.background(Panel2, RoundedCornerShape(18.dp)), contentAlignment = Alignment.Center) {
+            Text("Loading CoinEx candles…", color = Muted)
+        }
+        return
+    }
+
+    val renderCandles = aggregateCandlesForChart(candles, maxBars = 600)
+    val points = trades.mapNotNull { runCatching { buildTradingChartPoint(renderCandles, it) }.getOrNull() }
+
+    Canvas(
+        modifier
+            .background(Panel2, RoundedCornerShape(18.dp))
+            .pointerInput(renderCandles, points) {
+                detectTapGestures { point ->
+                    onSelect(((point.x / size.width) * renderCandles.size).toInt().coerceIn(0, renderCandles.lastIndex))
+                }
+            }
+    ) {
+        val values = buildList {
+            addAll(renderCandles.flatMap { listOf(it.low, it.high) })
+            points.forEach {
+                add(it.entryPrice)
+                add(it.exitPrice)
+                if (it.stopLoss > 0.0) add(it.stopLoss)
+                if (it.takeProfit > 0.0) add(it.takeProfit)
+            }
+        }
+        val minPrice = values.minOrNull() ?: 0.0
+        val maxPrice = values.maxOrNull() ?: 1.0
+        val range = (maxPrice - minPrice).takeIf { it > 0.0 } ?: 1.0
+        val step = size.width / renderCandles.size
+        val bodyWidth = (step * 0.58f).coerceAtLeast(2f)
+        fun y(price: Double): Float = size.height - ((price - minPrice) / range * size.height).toFloat()
+
+        for (g in 1..4) {
+            val gy = size.height * g / 5f
+            drawLine(Divider, Offset(0f, gy), Offset(size.width, gy), 1f)
+        }
+
+        renderCandles.forEachIndexed { i, c ->
+            val x = i * step + step / 2f
+            val candleColor = if (c.close >= c.open) Green else Red
+            val top = y(maxOf(c.open, c.close))
+            val bottom = y(minOf(c.open, c.close))
+            drawLine(candleColor, Offset(x, y(c.high)), Offset(x, y(c.low)), 1.5f)
+            drawRect(candleColor, Offset(x - bodyWidth / 2f, top), androidx.compose.ui.geometry.Size(bodyWidth, maxOf(2f, bottom - top)))
+            if (selected == i) {
+                drawLine(PrimaryText, Offset(x, 0f), Offset(x, size.height), 1.5f)
+                drawLine(PrimaryText, Offset(0f, y(c.close)), Offset(size.width, y(c.close)), 1f)
+            }
+        }
+
+        points.forEach { trade ->
+            val entryX = trade.entryIndex * step + step / 2f
+            val exitX = trade.exitIndex * step + step / 2f
+            val sideColor = if (trade.side == com.notash.cryptobacktester.core.Side.LONG) Green else Red
+
+            drawLine(sideColor, Offset(entryX, y(trade.entryPrice)), Offset(exitX, y(trade.exitPrice)), 2.5f)
+            if (trade.stopLoss > 0.0) {
+                drawLine(Red.copy(alpha = 0.78f), Offset(entryX, y(trade.stopLoss)), Offset(exitX, y(trade.stopLoss)), 1.5f)
+            }
+            if (trade.takeProfit > 0.0) {
+                drawLine(Gold.copy(alpha = 0.90f), Offset(entryX, y(trade.takeProfit)), Offset(exitX, y(trade.takeProfit)), 1.5f)
+            }
+
+            val entryY = y(trade.entryPrice)
+            if (trade.side == com.notash.cryptobacktester.core.Side.LONG) {
+                drawLine(Green, Offset(entryX, entryY + 11f), Offset(entryX, entryY - 2f), 3f)
+                drawLine(Green, Offset(entryX, entryY - 2f), Offset(entryX - 5f, entryY + 3f), 3f)
+                drawLine(Green, Offset(entryX, entryY - 2f), Offset(entryX + 5f, entryY + 3f), 3f)
+            } else {
+                drawLine(Red, Offset(entryX, entryY - 11f), Offset(entryX, entryY + 2f), 3f)
+                drawLine(Red, Offset(entryX, entryY + 2f), Offset(entryX - 5f, entryY - 3f), 3f)
+                drawLine(Red, Offset(entryX, entryY + 2f), Offset(entryX + 5f, entryY - 3f), 3f)
+            }
+            drawCircle(sideColor, 8f, Offset(entryX, entryY), style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.2f))
+
+            val exitY = y(trade.exitPrice)
+            drawCircle(PrimaryText, 8f, Offset(exitX, exitY), style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.2f))
+            drawCircle(sideColor, 3.5f, Offset(exitX, exitY))
+        }
+    }
+
+    Row(
+        Modifier.fillMaxWidth().padding(top = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text("● LONG", color = Green, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+        Text("● SHORT", color = Red, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+        Text("○ ENTRY / EXIT", color = PrimaryText, fontSize = 9.sp)
+        Text("SL", color = Red, fontSize = 9.sp)
+        Text("TP", color = Gold, fontSize = 9.sp)
+        Spacer(Modifier.weight(1f))
+        Text("${points.size} trades", color = Muted, fontSize = 9.sp)
+    }
+}
+'''
+          text = text[:start] + chart + text[end:]
+
+          old = 'fun loadChart() { scope.launch { candles = runCatching { repo.loadKlines(market, timeframe, 240) }.getOrDefault(emptyList()) } }'
+          new = '''fun loadChart() {
+        scope.launch {
+            val end = System.currentTimeMillis()
+            val start = end - 30L * 24L * 60L * 60L * 1000L
+            val history = HistoricalDataManager(repo)
+            candles = runCatching { history.downloadKlines(market, timeframe, start, end) }.getOrDefault(emptyList())
+            selected = null
+        }
+    }'''
+          if old in text:
+              text = text.replace(old, new, 1)
+          elif 'HistoricalDataManager(repo)' not in text:
+              raise SystemExit('loadChart implementation not found')
+
+          if 'import com.notash.cryptobacktester.data.HistoricalDataManager' not in text:
+              text = text.replace('import com.notash.cryptobacktester.data.CoinExRepository\n', 'import com.notash.cryptobacktester.data.CoinExRepository\nimport com.notash.cryptobacktester.data.HistoricalDataManager\n')
+
+          path.write_text(text, encoding='utf-8')
+      - name: Verify source
+        run: git diff --check
+      - name: Unit tests
+        run: gradle testDebugUnitTest
+      - name: Build debug APK
+        run: gradle assembleDebug
+      - name: Commit completed chart
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add app/src/main/java/com/notash/cryptobacktester/ui/ProfessionalTerminal.kt
+          git diff --cached --check
+          if git diff --cached --quiet; then
+            echo 'No changes to commit'
+            exit 0
+          fi
+          git commit -m 'feat: complete professional trading chart'
+          git push origin main
