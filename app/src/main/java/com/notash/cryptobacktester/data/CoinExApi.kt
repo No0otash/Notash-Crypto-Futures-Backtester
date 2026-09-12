@@ -34,19 +34,15 @@ class CoinExApi(private val client: OkHttpClient = OkHttpClient()) {
 
         internal fun parseFuturesMarkets(body: String): List<FuturesMarketDescriptor> {
             val json = JSONObject(body)
-            if (json.optInt("code") != 0) throw RuntimeException(json.optString("message", "CoinEx API error"))
+            val code = json.opt("code")?.toString()?.toIntOrNull() ?: 0
+            if (code != 0) throw RuntimeException(json.optString("message", "CoinEx API error"))
             val data = json.optJSONArray("data") ?: return emptyList()
             return buildList {
                 for (i in 0 until data.length()) {
                     val item = data.getJSONObject(i)
-                    add(
-                        FuturesMarketDescriptor(
-                            market = item.optString("market"),
-                            baseAsset = item.optString("base_ccy"),
-                            quoteAsset = item.optString("quote_ccy"),
-                            isTrading = item.optBoolean("is_market_available", item.optString("status") == "online")
-                        )
-                    )
+                    val status = item.optString("status")
+                    val available = if (item.has("is_market_available")) item.optBoolean("is_market_available") else status == "online"
+                    add(FuturesMarketDescriptor(item.optString("market"), item.optString("base_ccy"), item.optString("quote_ccy"), available))
                 }
             }.filter { it.market.isNotBlank() }
         }
@@ -65,7 +61,8 @@ class CoinExApi(private val client: OkHttpClient = OkHttpClient()) {
         client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) throw RuntimeException("CoinEx HTTP ${response.code}")
             val json = JSONObject(response.body?.string() ?: throw RuntimeException("Empty CoinEx response"))
-            if (json.optInt("code") != 0) throw RuntimeException(json.optString("message", "CoinEx API error"))
+            val code = json.opt("code")?.toString()?.toIntOrNull() ?: 0
+            if (code != 0) throw RuntimeException(json.optString("message", "CoinEx API error"))
             val data = json.optJSONArray("data") ?: return emptyList()
             val now = System.currentTimeMillis()
             return buildList {
@@ -73,21 +70,19 @@ class CoinExApi(private val client: OkHttpClient = OkHttpClient()) {
                     val item = data.getJSONObject(i)
                     val market = item.optString("market")
                     if (market.isBlank()) continue
-                    add(
-                        FuturesTickerSnapshot(
-                            market = market,
-                            lastPrice = item.optString("last", "0").toDoubleOrNull() ?: 0.0,
-                            open24h = item.optString("open", "0").toDoubleOrNull() ?: 0.0,
-                            high24h = item.optString("high", "0").toDoubleOrNull() ?: 0.0,
-                            low24h = item.optString("low", "0").toDoubleOrNull() ?: 0.0,
-                            volume24h = item.optString("volume", "0").toDoubleOrNull() ?: 0.0,
-                            quoteVolume24h = item.optString("value", "0").toDoubleOrNull() ?: 0.0,
-                            buyVolume24h = item.optString("volume_buy", "").toDoubleOrNull(),
-                            sellVolume24h = item.optString("volume_sell", "").toDoubleOrNull(),
-                            openInterest = item.optString("open_interest_volume", "").toDoubleOrNull(),
-                            timestampMs = now
-                        )
-                    )
+                    add(FuturesTickerSnapshot(
+                        market = market,
+                        lastPrice = item.optString("last", "0").toDoubleOrNull() ?: 0.0,
+                        open24h = item.optString("open", "0").toDoubleOrNull() ?: 0.0,
+                        high24h = item.optString("high", "0").toDoubleOrNull() ?: 0.0,
+                        low24h = item.optString("low", "0").toDoubleOrNull() ?: 0.0,
+                        volume24h = item.optString("volume", "0").toDoubleOrNull() ?: 0.0,
+                        quoteVolume24h = item.optString("value", "0").toDoubleOrNull() ?: 0.0,
+                        buyVolume24h = item.optString("volume_buy", "").toDoubleOrNull(),
+                        sellVolume24h = item.optString("volume_sell", "").toDoubleOrNull(),
+                        openInterest = item.optString("open_interest_volume", "").toDoubleOrNull(),
+                        timestampMs = now
+                    ))
                 }
             }
         }
@@ -122,13 +117,7 @@ class CoinExApi(private val client: OkHttpClient = OkHttpClient()) {
             val data = json.optJSONArray("data") ?: return null
             if (data.length() == 0) return null
             val item = data.getJSONObject(0)
-            return MarketTicker(
-                market = market,
-                last = item.optString("last", item.optString("close", "0")).toDouble(),
-                changeRate = item.optString("change_rate", "0").toDouble(),
-                volume = item.optString("volume", "0").toDouble(),
-                markPrice = item.optString("mark_price", "0").toDouble()
-            )
+            return MarketTicker(market, item.optString("last", item.optString("close", "0")).toDouble(), item.optString("change_rate", "0").toDouble(), item.optString("volume", "0").toDouble(), item.optString("mark_price", "0").toDouble())
         }
     }
 
