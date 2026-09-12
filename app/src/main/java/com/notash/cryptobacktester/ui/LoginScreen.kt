@@ -117,6 +117,15 @@ private fun LoginForm(auth: SupabaseAuth, mode: AppThemeMode, onLogin: () -> Uni
                     }, enabled = valid && !loading, modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(16.dp)) {
                         Text("ثبت‌نام و ورود مستقیم")
                     }
+                    OutlinedButton(onClick = {
+                        loading = false
+                        success = true
+                        message = "ورود دمو فعال شد؛ اطلاعات حساب واقعی شما تغییری نمی‌کند."
+                        DemoLogin.createSession()
+                        onLogin()
+                    }, enabled = !loading, modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(16.dp)) {
+                        Text("ورود دمو • Demo Login", fontWeight = FontWeight.ExtraBold)
+                    }
                     TextButton(onClick = {
                         loading = true
                         scope.launch {
