@@ -18,28 +18,26 @@ enum class TerminalPage(val titleFa: String, val titleEn: String) {
     BACKTEST("بک‌تست", "Backtest"),
     REPORT("گزارش معاملات", "Trade Report"),
     STRATEGY("استراتژی", "Strategy"),
-    INTELLIGENCE("هوش بازار", "Intel"),
+    INTELLIGENCE("هوش بازار", "Intelligence"),
     AI("AI Hub", "AI Hub")
 }
 
 @Composable
 fun TerminalNavigation(selected: TerminalPage, onSelected: (TerminalPage) -> Unit, persian: Boolean = true) {
     NavigationBar {
-        val pages = listOf(
+        val primaryPages = listOf(
             TerminalPage.MARKET to Icons.Outlined.Home,
             TerminalPage.MARKETS to Icons.Outlined.List,
             TerminalPage.BACKTEST to Icons.Outlined.Build,
-            TerminalPage.REPORT to Icons.Outlined.List,
-            TerminalPage.STRATEGY to Icons.Outlined.Build,
             TerminalPage.INTELLIGENCE to Icons.Outlined.Info,
             TerminalPage.AI to Icons.Outlined.Star
         )
-        pages.forEach { (page, icon) ->
+        primaryPages.forEach { (page, icon) ->
             NavigationBarItem(
                 selected = selected == page,
                 onClick = { onSelected(page) },
                 icon = { Icon(icon, contentDescription = if (persian) page.titleFa else page.titleEn) },
-                label = { Text(if (persian) page.titleFa else page.titleEn) }
+                label = { Text(if (persian) page.titleFa else page.titleEn, maxLines = 1) }
             )
         }
     }

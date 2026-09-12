@@ -3,12 +3,81 @@ package com.notash.cryptobacktester.data
 import com.notash.cryptobacktester.core.Candle
 import com.notash.cryptobacktester.core.FundingRate
 import com.notash.cryptobacktester.core.MarketTicker
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
 
+data class FuturesMarketDescriptor(val market: String, val baseAsset: String, val quoteAsset: String, val isTrading: Boolean)
+
+data class FuturesTickerSnapshot(
+    val market: String,
+    val lastPrice: Double,
+    val open24h: Double,
+    val high24h: Double,
+    val low24h: Double,
+    val volume24h: Double,
+    val quoteVolume24h: Double,
+    val buyVolume24h: Double?,
+    val sellVolume24h: Double?,
+    val openInterest: Double?,
+    val timestampMs: Long
+)
+
 class CoinExApi(private val client: OkHttpClient = OkHttpClient()) {
-    companion object { private const val BASE_URL = "https://api.coinex.com/v2" }
+    companion object {
+        private const val BASE_URL = "https://api.coinex.com/v2"
+
+        internal fun parseFuturesMarkets(body: String): List<FuturesMarketDescriptor> {
+            val data = kotlinx.serialization.json.Json.parseToJsonElement(body).jsonObject["data"]?.jsonArray ?: return emptyList()
+            return data.mapNotNull { element ->
+                val item = element.jsonObject
+                val market = item["market"]?.jsonPrimitive?.content.orEmpty()
+                if (market.isBlank()) return@mapNotNull null
+                val status = item["status"]?.jsonPrimitive?.content.orEmpty()
+                val available = item["is_market_available"]?.jsonPrimitive?.booleanOrNull ?: (status == "online")
+                FuturesMarketDescriptor(
+                    market = market,
+                    baseAsset = item["base_ccy"]?.jsonPrimitive?.content.orEmpty(),
+                    quoteAsset = item["quote_ccy"]?.jsonPrimitive?.content.orEmpty(),
+                    isTrading = available
+                )
+            }
+        }
+    }
+
+    fun getFuturesMarkets(): List<FuturesMarketDescriptor> {
+        val request = Request.Builder().url("$BASE_URL/futures/market").get().build()
+        client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) throw RuntimeException("CoinEx HTTP ${response.code}")
+            val body = response.body?.string() ?: throw RuntimeException("Empty CoinEx response")
+            val json = JSONObject(body)
+            if (json.optInt("code") != 0) throw RuntimeException(json.optString("message", "CoinEx API error"))
+            return parseFuturesMarkets(body)
+        }
+    }
+
+    fun getFuturesTickers(): List<FuturesTickerSnapshot> {
+        val request = Request.Builder().url("$BASE_URL/futures/ticker").get().build()
+        client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) throw RuntimeException("CoinEx HTTP ${response.code}")
+            val json = JSONObject(response.body?.string() ?: throw RuntimeException("Empty CoinEx response"))
+            if (json.optInt("code") != 0) throw RuntimeException(json.optString("message", "CoinEx API error"))
+            val data = json.optJSONArray("data") ?: return emptyList()
+            val now = System.currentTimeMillis()
+            return buildList {
+                for (i in 0 until data.length()) {
+                    val item = data.getJSONObject(i)
+                    val market = item.optString("market")
+                    if (market.isBlank()) continue
+                    add(FuturesTickerSnapshot(market, item.optString("last", "0").toDoubleOrNull() ?: 0.0, item.optString("open", "0").toDoubleOrNull() ?: 0.0, item.optString("high", "0").toDoubleOrNull() ?: 0.0, item.optString("low", "0").toDoubleOrNull() ?: 0.0, item.optString("volume", "0").toDoubleOrNull() ?: 0.0, item.optString("value", "0").toDoubleOrNull() ?: 0.0, item.optString("volume_buy", "").toDoubleOrNull(), item.optString("volume_sell", "").toDoubleOrNull(), item.optString("open_interest_volume", "").toDoubleOrNull(), now))
+                }
+            }
+        }
+    }
 
     fun getKlines(market: String, period: String, limit: Int = 1000, startTime: Long? = null, endTime: Long? = null): List<Candle> {
         val url = buildString {
@@ -39,13 +108,7 @@ class CoinExApi(private val client: OkHttpClient = OkHttpClient()) {
             val data = json.optJSONArray("data") ?: return null
             if (data.length() == 0) return null
             val item = data.getJSONObject(0)
-            return MarketTicker(
-                market = market,
-                last = item.optString("last", item.optString("close", "0")).toDouble(),
-                changeRate = item.optString("change_rate", "0").toDouble(),
-                volume = item.optString("volume", "0").toDouble(),
-                markPrice = item.optString("mark_price", "0").toDouble()
-            )
+            return MarketTicker(market, item.optString("last", item.optString("close", "0")).toDouble(), item.optString("change_rate", "0").toDouble(), item.optString("volume", "0").toDouble(), item.optString("mark_price", "0").toDouble())
         }
     }
 
