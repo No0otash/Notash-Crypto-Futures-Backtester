@@ -1,18 +1,18 @@
 name: Patch Trading Chart V2
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [ main ]
 
 permissions:
   contents: write
 
 jobs:
   patch:
+    if: ${{ github.event.head_commit.message != 'feat: complete trading chart' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
       - name: Patch source
         run: |
           python3 - <<'PY'
@@ -26,10 +26,7 @@ jobs:
     val renderCandles = aggregateCandlesForChart(candles, 600)
     Canvas(modifier.background(Panel2, RoundedCornerShape(18.dp)).pointerInput(renderCandles) { detectTapGestures { point -> onSelect(((point.x / size.width) * renderCandles.size).toInt().coerceIn(0, renderCandles.lastIndex)) } }) {
         val points = trades.mapNotNull { runCatching { buildTradingChartPoint(renderCandles, it) }.getOrNull() }
-        val values = buildList {
-            addAll(renderCandles.flatMap { listOf(it.low, it.high) })
-            points.forEach { add(it.entryPrice); add(it.exitPrice); if (it.stopLoss > 0) add(it.stopLoss); if (it.takeProfit > 0) add(it.takeProfit) }
-        }
+        val values = buildList { addAll(renderCandles.flatMap { listOf(it.low, it.high) }); points.forEach { add(it.entryPrice); add(it.exitPrice); if (it.stopLoss > 0) add(it.stopLoss); if (it.takeProfit > 0) add(it.takeProfit) } }
         val minPrice = values.minOrNull() ?: 0.0
         val maxPrice = values.maxOrNull() ?: 1.0
         val range = (maxPrice - minPrice).takeIf { it > 0 } ?: 1.0
@@ -46,20 +43,36 @@ jobs:
             if (selected == i) { drawLine(PrimaryText, Offset(x,0f), Offset(x,size.height), 1.5f); drawLine(PrimaryText, Offset(0f,y(c.close)), Offset(size.width,y(c.close)), 1f) }
         }
         points.forEach { p ->
-            val ex = p.entryIndex * step + step/2f; val xx = p.exitIndex * step + step/2f
+            val entryX = p.entryIndex * step + step/2f
+            val exitX = p.exitIndex * step + step/2f
             val sideColor = if (p.side == com.notash.cryptobacktester.core.Side.LONG) Green else Red
-            drawLine(sideColor, Offset(ex,y(p.entryPrice)), Offset(xx,y(p.exitPrice)), 2.5f)
-            if (p.stopLoss > 0) drawLine(Red.copy(alpha=.75f), Offset(ex,y(p.stopLoss)), Offset(xx,y(p.stopLoss)), 1.5f)
-            if (p.takeProfit > 0) drawLine(Gold.copy(alpha=.9f), Offset(ex,y(p.takeProfit)), Offset(xx,y(p.takeProfit)), 1.5f)
-            val ey=y(p.entryPrice)
-            if (p.side == com.notash.cryptobacktester.core.Side.LONG) { drawLine(Green,Offset(ex,ey+10),Offset(ex,ey-2),3f); drawLine(Green,Offset(ex,ey-2),Offset(ex-5,ey+3),3f); drawLine(Green,Offset(ex,ey-2),Offset(ex+5,ey+3),3f) }
-            else { drawLine(Red,Offset(ex,ey-10),Offset(ex,ey+2),3f); drawLine(Red,Offset(ex,ey+2),Offset(ex-5,ey-3),3f); drawLine(Red,Offset(ex,ey+2),Offset(ex+5,ey-3),3f) }
-            drawCircle(sideColor,7f,Offset(ex,ey),style=androidx.compose.ui.graphics.drawscope.Stroke(width=2f))
-            val zy=y(p.exitPrice); drawCircle(PrimaryText,7f,Offset(xx,zy),style=androidx.compose.ui.graphics.drawscope.Stroke(width=2f)); drawCircle(sideColor,3f,Offset(xx,zy))
+            drawLine(sideColor, Offset(entryX,y(p.entryPrice)), Offset(exitX,y(p.exitPrice)), 2.5f)
+            if (p.stopLoss > 0) drawLine(Red.copy(alpha=.75f), Offset(entryX,y(p.stopLoss)), Offset(exitX,y(p.stopLoss)), 1.5f)
+            if (p.takeProfit > 0) drawLine(Gold.copy(alpha=.9f), Offset(entryX,y(p.takeProfit)), Offset(exitX,y(p.takeProfit)), 1.5f)
+            val entryY=y(p.entryPrice)
+            if (p.side == com.notash.cryptobacktester.core.Side.LONG) {
+                drawLine(Green,Offset(entryX,entryY+10),Offset(entryX,entryY-2),3f)
+                drawLine(Green,Offset(entryX,entryY-2),Offset(entryX-5,entryY+3),3f)
+                drawLine(Green,Offset(entryX,entryY-2),Offset(entryX+5,entryY+3),3f)
+            } else {
+                drawLine(Red,Offset(entryX,entryY-10),Offset(entryX,entryY+2),3f)
+                drawLine(Red,Offset(entryX,entryY+2),Offset(entryX-5,entryY-3),3f)
+                drawLine(Red,Offset(entryX,entryY+2),Offset(entryX+5,entryY-3),3f)
+            }
+            drawCircle(sideColor,7f,Offset(entryX,entryY),style=androidx.compose.ui.graphics.drawscope.Stroke(width=2f))
+            val exitY=y(p.exitPrice)
+            drawCircle(PrimaryText,7f,Offset(exitX,exitY),style=androidx.compose.ui.graphics.drawscope.Stroke(width=2f))
+            drawCircle(sideColor,3f,Offset(exitX,exitY))
         }
     }
     Row(Modifier.fillMaxWidth().padding(top=6.dp), horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-        Text("● LONG",color=Green,fontSize=9.sp,fontWeight=FontWeight.Bold); Text("● SHORT",color=Red,fontSize=9.sp,fontWeight=FontWeight.Bold); Text("○ ENTRY / EXIT",color=PrimaryText,fontSize=9.sp); Text("SL",color=Red,fontSize=9.sp); Text("TP",color=Gold,fontSize=9.sp); Spacer(Modifier.weight(1f)); Text("${points.size} trades",color=Muted,fontSize=9.sp)
+        Text("● LONG",color=Green,fontSize=9.sp,fontWeight=FontWeight.Bold)
+        Text("● SHORT",color=Red,fontSize=9.sp,fontWeight=FontWeight.Bold)
+        Text("○ ENTRY / EXIT",color=PrimaryText,fontSize=9.sp)
+        Text("SL",color=Red,fontSize=9.sp)
+        Text("TP",color=Gold,fontSize=9.sp)
+        Spacer(Modifier.weight(1f))
+        Text("${points.size} trades",color=Muted,fontSize=9.sp)
     }
 }
 '''
@@ -75,5 +88,6 @@ jobs:
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add app/src/main/java/com/notash/cryptobacktester/ui/ProfessionalTerminal.kt
+          git diff --cached --check
           git commit -m "feat: complete trading chart"
           git push origin main
