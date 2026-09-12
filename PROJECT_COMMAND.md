@@ -91,7 +91,7 @@
 
 ### وضعیت فعلی 2.4
 
-🟡 **در حال Verification** — مدل `TradeResult` و صفحه `TradeByTradeReport` موجود هستند و همه فیلدهای الزامی بالا را مصرف می‌کنند. پیش از تغییرات این مرحله، وجود این قابلیت بررسی شد و از ساخت دوباره آن جلوگیری شد. تست قرارداد کامل Trade-by-Trade نیز اضافه شده است. وضعیت نهایی فقط پس از موفقیت Unit Test و `assembleDebug` به 🟢 Complete تغییر می‌کند.
+🟢 **Complete** — مدل `TradeResult` و صفحه `TradeByTradeReport` موجود هستند و تمام فیلدهای الزامی Trade Report را مصرف می‌کنند. موتور Backtest نیز `slTouched` را از رفتار واقعی کندل‌ها دنبال می‌کند. تست قرارداد Trade-by-Trade و تست مدل اجرا شده‌اند. این وضعیت بر اساس موفقیت واقعی Unit Test و `assembleDebug` در GitHub Actions Run #445 ثبت شده است.
 
 ---
 
@@ -447,3 +447,16 @@ AI Hub باید یک Workspace مستقل از Backtester باشد، اما بت
 - UI موجود فیلدهای LONG/SHORT، Entry، Exit، Timeframe، Entry/Exit time، Position size، Leverage، SL، TP، Exit reason، SL touched، PnL، PnL percentage، Fees، Funding و Win/Loss را نمایش می‌دهد.
 - تست قرارداد نهایی `TradeByTradeReportTest.kt` برای کنترل اتصال داده‌های الزامی اضافه شده است.
 - وضعیت 2.4 تا موفقیت Unit Test و `assembleDebug`: 🟡 **در حال Verification**.
+
+### 2026-09-12 — Trade Report + CSV/JSON Export Verification
+- GitHub Actions Run #445 با Run ID `34672467336` با موفقیت کامل شد.
+- Unit Test با موفقیت اجرا شد و مجموعه تست‌ها بدون Failure پایان یافت.
+- `assembleDebug` با موفقیت انجام شد.
+- مرحله Inspect APK size با موفقیت انجام شد.
+- Artifact با موفقیت Upload شد.
+- JSON Export از `org.json` Android جدا شد و به `kotlinx.serialization` تغییر یافت تا Unit Test روی JVM بدون Runtime Exception اجرا شود.
+- CSV/JSON Export تمام فیلدهای لازم Trade Report را تولید می‌کند، از جمله tradeNumber، side، entry/exit، timeframe، timeها، position size، leverage، SL/TP، exit reason، slTouched، gross/net PnL، pnlPercent، fees، funding و status.
+- **وضعیت 2.4 Trade Report: 🟢 Complete**.
+- **وضعیت CSV Export: 🟢 Complete**.
+- **وضعیت JSON Export: 🟢 Complete**.
+- این تکمیل بر اساس کد موجود + تست موفق + Build موفق ثبت شده و نیازمند تأیید جداگانه روی دستگاه واقعی نیست مگر برای Verification بصری UI.
