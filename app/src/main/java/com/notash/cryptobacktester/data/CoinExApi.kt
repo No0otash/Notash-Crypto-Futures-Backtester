@@ -3,6 +3,10 @@ package com.notash.cryptobacktester.data
 import com.notash.cryptobacktester.core.Candle
 import com.notash.cryptobacktester.core.FundingRate
 import com.notash.cryptobacktester.core.MarketTicker
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
@@ -28,15 +32,20 @@ class CoinExApi(private val client: OkHttpClient = OkHttpClient()) {
         private const val BASE_URL = "https://api.coinex.com/v2"
 
         internal fun parseFuturesMarkets(body: String): List<FuturesMarketDescriptor> {
-            val data = JSONObject(body).optJSONArray("data") ?: return emptyList()
-            return buildList {
-                for (i in 0 until data.length()) {
-                    val item = data.getJSONObject(i)
-                    val status = item.optString("status")
-                    val available = if (item.has("is_market_available")) item.optBoolean("is_market_available") else status == "online"
-                    add(FuturesMarketDescriptor(item.optString("market"), item.optString("base_ccy"), item.optString("quote_ccy"), available))
-                }
-            }.filter { it.market.isNotBlank() }
+            val data = kotlinx.serialization.json.Json.parseToJsonElement(body).jsonObject["data"]?.jsonArray ?: return emptyList()
+            return data.mapNotNull { element ->
+                val item = element.jsonObject
+                val market = item["market"]?.jsonPrimitive?.content.orEmpty()
+                if (market.isBlank()) return@mapNotNull null
+                val status = item["status"]?.jsonPrimitive?.content.orEmpty()
+                val available = item["is_market_available"]?.jsonPrimitive?.booleanOrNull ?: (status == "online")
+                FuturesMarketDescriptor(
+                    market = market,
+                    baseAsset = item["base_ccy"]?.jsonPrimitive?.content.orEmpty(),
+                    quoteAsset = item["quote_ccy"]?.jsonPrimitive?.content.orEmpty(),
+                    isTrading = available
+                )
+            }
         }
     }
 
