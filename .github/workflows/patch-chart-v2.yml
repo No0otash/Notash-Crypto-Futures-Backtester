@@ -1,0 +1,79 @@
+name: Patch Trading Chart V2
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Patch source
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('app/src/main/java/com/notash/cryptobacktester/ui/ProfessionalTerminal.kt')
+          s = p.read_text()
+          start = s.index('@Composable private fun CandleChart(')
+          end = s.index('@Composable private fun CandleInfo', start)
+          chart = '''@Composable private fun CandleChart(candles: List<Candle>, trades: List<TradeResult>, selected: Int?, onSelect: (Int) -> Unit, modifier: Modifier) {
+    if (candles.isEmpty()) { Box(modifier.background(Panel2, RoundedCornerShape(18.dp)), contentAlignment = Alignment.Center) { Text("Loading CoinEx candles…", color = Muted) }; return }
+    val renderCandles = aggregateCandlesForChart(candles, 600)
+    Canvas(modifier.background(Panel2, RoundedCornerShape(18.dp)).pointerInput(renderCandles) { detectTapGestures { point -> onSelect(((point.x / size.width) * renderCandles.size).toInt().coerceIn(0, renderCandles.lastIndex)) } }) {
+        val points = trades.mapNotNull { runCatching { buildTradingChartPoint(renderCandles, it) }.getOrNull() }
+        val values = buildList {
+            addAll(renderCandles.flatMap { listOf(it.low, it.high) })
+            points.forEach { add(it.entryPrice); add(it.exitPrice); if (it.stopLoss > 0) add(it.stopLoss); if (it.takeProfit > 0) add(it.takeProfit) }
+        }
+        val minPrice = values.minOrNull() ?: 0.0
+        val maxPrice = values.maxOrNull() ?: 1.0
+        val range = (maxPrice - minPrice).takeIf { it > 0 } ?: 1.0
+        val step = size.width / renderCandles.size
+        val bodyWidth = (step * 0.58f).coerceAtLeast(2f)
+        fun y(price: Double) = size.height - ((price - minPrice) / range * size.height).toFloat()
+        for (g in 1..4) { val gy = size.height * g / 5f; drawLine(Divider, Offset(0f, gy), Offset(size.width, gy), 1f) }
+        renderCandles.forEachIndexed { i, c ->
+            val x = i * step + step / 2f
+            val color = if (c.close >= c.open) Green else Red
+            val top = y(maxOf(c.open, c.close)); val bottom = y(minOf(c.open, c.close))
+            drawLine(color, Offset(x, y(c.high)), Offset(x, y(c.low)), 1.5f)
+            drawRect(color, Offset(x - bodyWidth/2f, top), androidx.compose.ui.geometry.Size(bodyWidth, maxOf(2f, bottom-top)))
+            if (selected == i) { drawLine(PrimaryText, Offset(x,0f), Offset(x,size.height), 1.5f); drawLine(PrimaryText, Offset(0f,y(c.close)), Offset(size.width,y(c.close)), 1f) }
+        }
+        points.forEach { p ->
+            val ex = p.entryIndex * step + step/2f; val xx = p.exitIndex * step + step/2f
+            val sideColor = if (p.side == com.notash.cryptobacktester.core.Side.LONG) Green else Red
+            drawLine(sideColor, Offset(ex,y(p.entryPrice)), Offset(xx,y(p.exitPrice)), 2.5f)
+            if (p.stopLoss > 0) drawLine(Red.copy(alpha=.75f), Offset(ex,y(p.stopLoss)), Offset(xx,y(p.stopLoss)), 1.5f)
+            if (p.takeProfit > 0) drawLine(Gold.copy(alpha=.9f), Offset(ex,y(p.takeProfit)), Offset(xx,y(p.takeProfit)), 1.5f)
+            val ey=y(p.entryPrice)
+            if (p.side == com.notash.cryptobacktester.core.Side.LONG) { drawLine(Green,Offset(ex,ey+10),Offset(ex,ey-2),3f); drawLine(Green,Offset(ex,ey-2),Offset(ex-5,ey+3),3f); drawLine(Green,Offset(ex,ey-2),Offset(ex+5,ey+3),3f) }
+            else { drawLine(Red,Offset(ex,ey-10),Offset(ex,ey+2),3f); drawLine(Red,Offset(ex,ey+2),Offset(ex-5,ey-3),3f); drawLine(Red,Offset(ex,ey+2),Offset(ex+5,ey-3),3f) }
+            drawCircle(sideColor,7f,Offset(ex,ey),style=androidx.compose.ui.graphics.drawscope.Stroke(width=2f))
+            val zy=y(p.exitPrice); drawCircle(PrimaryText,7f,Offset(xx,zy),style=androidx.compose.ui.graphics.drawscope.Stroke(width=2f)); drawCircle(sideColor,3f,Offset(xx,zy))
+        }
+    }
+    Row(Modifier.fillMaxWidth().padding(top=6.dp), horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+        Text("● LONG",color=Green,fontSize=9.sp,fontWeight=FontWeight.Bold); Text("● SHORT",color=Red,fontSize=9.sp,fontWeight=FontWeight.Bold); Text("○ ENTRY / EXIT",color=PrimaryText,fontSize=9.sp); Text("SL",color=Red,fontSize=9.sp); Text("TP",color=Gold,fontSize=9.sp); Spacer(Modifier.weight(1f)); Text("${points.size} trades",color=Muted,fontSize=9.sp)
+    }
+}
+'''
+          s = s[:start] + chart + s[end:]
+          old = 'fun loadChart() { scope.launch { candles = runCatching { repo.loadKlines(market, timeframe, 240) }.getOrDefault(emptyList()) } }'
+          new = 'fun loadChart() { scope.launch { val end = System.currentTimeMillis(); val start = end - 30L * 24L * 60L * 60L * 1000L; val history = com.notash.cryptobacktester.data.HistoricalDataManager(); candles = runCatching { history.downloadKlines(market, timeframe, start, end) }.getOrDefault(emptyList()) } }'
+          if old not in s: raise SystemExit('loadChart not found')
+          s = s.replace(old, new, 1)
+          p.write_text(s)
+          PY
+      - name: Commit and push
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add app/src/main/java/com/notash/cryptobacktester/ui/ProfessionalTerminal.kt
+          git commit -m "feat: complete trading chart"
+          git push origin main
