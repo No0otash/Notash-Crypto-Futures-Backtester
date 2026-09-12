@@ -16,4 +16,11 @@ class TerminalResponsiveLayoutTest {
         assertEquals(TerminalLayoutMode.STANDARD, terminalLayoutMode(839))
         assertEquals(TerminalLayoutMode.EXPANDED, terminalLayoutMode(840))
     }
+
+    @Test
+    fun breakpoints_are_monotonic_for_phone_tablet_and_large_screens() {
+        assertEquals(TerminalLayoutMode.COMPACT, terminalLayoutMode(411))
+        assertEquals(TerminalLayoutMode.STANDARD, terminalLayoutMode(768))
+        assertEquals(TerminalLayoutMode.EXPANDED, terminalLayoutMode(1024))
+    }
 }
