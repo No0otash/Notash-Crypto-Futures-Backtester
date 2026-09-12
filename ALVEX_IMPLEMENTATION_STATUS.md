@@ -17,6 +17,16 @@ This file is the live engineering ledger. A feature is only marked COMPLETE when
 - Coin Intelligence consumes research, roadmap, tokenomics, unlock and on-chain inputs when supplied.
 - Independent provider-neutral AI Hub is present and explicitly reports when a real AI provider is not connected.
 
+## Android Compatibility & Responsive UI — mandatory product requirement
+
+- 🔴 REQUIRED: The entire ALVEX application must be designed and implemented for broad Android-device compatibility, not only Xiaomi 14 or one specific screen size.
+- The UI must adapt to different screen widths/heights, aspect ratios, densities, orientations and Android device configurations without clipped, overlapping or inaccessible controls.
+- Navigation, charts, tables, cards, dialogs, keyboards/input fields and touch targets must remain usable on small, medium and large Android screens.
+- Android lifecycle/configuration changes must not break active screens, chart state or user-entered settings where state retention is expected.
+- Avoid device-specific hard-coded dimensions, coordinates or assumptions. Prefer responsive Compose layouts, adaptive sizing and density-independent units.
+- Compatibility verification must include at minimum the project's supported Android SDK range and representative small/medium/large screen configurations; Xiaomi 14/Android 16 remains a test device, not the only compatibility target.
+- A green compile/build alone is not sufficient evidence of device compatibility. Compatibility requires automated tests where practical plus emulator/device rendering checks for critical screens.
+
 ## Professional Trading Chart — current verification record
 
 - 🟢 Real OHLC candlestick data: implemented from CoinEx candles; bullish/bearish bodies are rendered green/red.
@@ -54,6 +64,7 @@ These must not be represented as finished merely because the APK builds:
 6. The current build still emits Material icon and Gradle/Actions deprecation warnings; these are warnings, not build failures.
 7. The APK is below the previously requested 50 MB visual target. Size must not be artificially inflated; size should grow only from useful functionality.
 8. Physical-device rendering verification for the professional trading chart is still required before the chart can be marked fully verified.
+9. Broad Android compatibility is now a mandatory requirement and is not considered complete until representative small/medium/large Android configurations and critical-screen rendering have been verified.
 
 ## Rule
 
