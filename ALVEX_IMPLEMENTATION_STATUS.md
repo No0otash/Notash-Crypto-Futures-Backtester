@@ -16,6 +16,15 @@ This file is the live engineering ledger. A feature is only marked COMPLETE when
 - Research, team/investor, roadmap, tokenomics, unlock/burn/emission and on-chain data models/analyzers are present and explicitly preserve unknown data.
 - Coin Intelligence consumes research, roadmap, tokenomics, unlock and on-chain inputs when supplied.
 - Independent provider-neutral AI Hub is present and explicitly reports when a real AI provider is not connected.
+- 🟢 Permanent local Demo Login is present on the Login screen. It creates a clearly separated local demo session without requiring Supabase, email confirmation, or real account credentials.
+
+## Authentication / Demo Access — permanent product requirement
+
+- 🟢 `Demo Login` must remain available on the Login screen as a local fallback for testing when Supabase authentication is unavailable or email confirmation is enabled.
+- 🟢 Demo access must not modify, create, or impersonate a real Supabase account.
+- 🟢 Demo identity is explicitly marked as demo/local and is independent from the real authenticated session.
+- 🟢 Regression coverage exists in `app/src/test/java/com/notash/cryptobacktester/ui/DemoLoginTest.kt`.
+- Any future Login/UI refactor must preserve this entry point unless the project owner explicitly approves its removal.
 
 ## Android Compatibility & Responsive UI — mandatory product requirement
 
@@ -45,9 +54,11 @@ Reference target: premium dark crypto-finance terminal comparable in information
 
 - TDD responsive contract test exists in `app/src/test/java/com/notash/cryptobacktester/ui/TerminalResponsiveLayoutTest.kt` for compact, standard and expanded widths.
 - TDD chart contract test exists in `app/src/test/java/com/notash/cryptobacktester/ui/TradingChartModelTest.kt`.
+- TDD Demo Login contract test exists in `app/src/test/java/com/notash/cryptobacktester/ui/DemoLoginTest.kt`.
 - The professional chart implementation was committed to `main` in commit `63ce47517f21b93256dc0ad9dc290a2ee237d1fc`.
+- Demo Login implementation was added in commits `71577c5ac5d71c69bfcf9d2cd9d7591a713e5046`, `4c6006eb21c8ec68b6fb9e731879843febe0bf7d` and `059c160feb352aebf144949f2361e4e6877a9590`.
 - A previous clean Android verification run is `33393559309` with unit tests, debug APK build and artifact upload passing; that run predates the final chart/responsive source commit and therefore is not reused as proof of the latest changes.
-- Current GitHub Actions runs created from the latest connector commits have not produced a usable job-level result in this execution environment, so the latest chart/responsive changes are not marked CI-verified yet.
+- The Demo Login change must be verified by the next clean GitHub Actions unit-test and APK build before being treated as CI-verified.
 
 ## Known non-complete production items
 
