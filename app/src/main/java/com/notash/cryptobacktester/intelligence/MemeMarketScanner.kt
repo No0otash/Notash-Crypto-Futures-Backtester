@@ -7,8 +7,10 @@ class MemeMarketScanner(
     suspend fun scan(config: ScannerConfig = ScannerConfig()): List<MemeScanResult> {
         val markets = source.loadMarkets().asSequence().filter { it.isTrading }.take(config.maxMarkets).toList()
         val tickers = source.loadTickers().associateBy { it.market.uppercase() }
-        return markets.mapNotNull { market ->
-            tickers[market.market.uppercase()] ?: return@mapNotNull null
+        val candidates = markets.mapNotNull { market -> tickers[market.market.uppercase()]?.let { market to it } }
+            .sortedByDescending { (_, ticker) -> kotlin.math.abs(ticker.lastPrice / ticker.open24h.coerceAtLeast(0.0000000001) - 1.0) }
+            .take(config.deepScanLimit)
+        return candidates.mapNotNull { (market, _) ->
             val candles = try {
                 source.loadCandles(market.market, config.candlePeriod, config.candleLimit)
             } catch (_: Exception) {
