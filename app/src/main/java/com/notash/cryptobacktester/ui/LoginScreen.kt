@@ -105,10 +105,17 @@ private fun LoginForm(auth: SupabaseAuth, mode: AppThemeMode, onLogin: () -> Uni
                         scope.launch {
                             val result = auth.signUp(email.trim(), password)
                             loading = false
-                            if (result.error == null) { success = true; message = "حساب ساخته شد؛ ایمیل را بررسی کنید." } else { success = false; message = result.error }
+                            if (result.error == null) {
+                                success = true
+                                message = "ثبت‌نام با موفقیت انجام شد؛ بدون نیاز به تأیید ایمیل وارد شدید."
+                                onLogin()
+                            } else {
+                                success = false
+                                message = result.error
+                            }
                         }
                     }, enabled = valid && !loading, modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(16.dp)) {
-                        Text("ثبت‌نام")
+                        Text("ثبت‌نام و ورود مستقیم")
                     }
                     TextButton(onClick = {
                         loading = true
