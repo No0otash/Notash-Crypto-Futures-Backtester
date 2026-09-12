@@ -8,13 +8,7 @@ import org.junit.Test
 class CoinExMarketParsingTest {
     @Test
     fun parsesTradingAndUnavailableFuturesMarkets() {
-        val body = """
-            {"data":[
-              {"market":"BTCUSDT","base_ccy":"BTC","quote_ccy":"USDT","status":"online"},
-              {"market":"PEPEUSDT","base_ccy":"PEPE","quote_ccy":"USDT","status":"online"},
-              {"market":"OLDUSDT","base_ccy":"OLD","quote_ccy":"USDT","status":"counting_down"}
-            ]}
-        """.trimIndent()
+        val body = "{\"data\":[{"market\":\"BTCUSDT\",\"base_ccy\":\"BTC\",\"quote_ccy\":\"USDT\",\"status\":\"online\"},{\"market\":\"PEPEUSDT\",\"base_ccy\":\"PEPE\",\"quote_ccy\":\"USDT\",\"status\":\"online\"},{\"market\":\"OLDUSDT\",\"base_ccy\":\"OLD\",\"quote_ccy\":\"USDT\",\"status\":\"counting_down\"}]}"
 
         val result = CoinExApi.parseFuturesMarkets(body)
 
