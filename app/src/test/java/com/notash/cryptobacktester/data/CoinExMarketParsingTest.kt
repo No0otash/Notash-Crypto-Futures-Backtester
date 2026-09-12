@@ -9,19 +9,14 @@ class CoinExMarketParsingTest {
     @Test
     fun parsesTradingAndUnavailableFuturesMarkets() {
         val body = """
-            {"code":0,"data":[
+            {"data":[
               {"market":"BTCUSDT","base_ccy":"BTC","quote_ccy":"USDT","status":"online"},
               {"market":"PEPEUSDT","base_ccy":"PEPE","quote_ccy":"USDT","status":"online"},
               {"market":"OLDUSDT","base_ccy":"OLD","quote_ccy":"USDT","status":"counting_down"}
-            ],"message":"OK"}
+            ]}
         """.trimIndent()
 
-        val result = try {
-            CoinExApi.parseFuturesMarkets(body)
-        } catch (error: RuntimeException) {
-            error.printStackTrace()
-            throw error
-        }
+        val result = CoinExApi.parseFuturesMarkets(body)
 
         assertEquals(3, result.size)
         assertEquals("BTCUSDT", result[0].market)
