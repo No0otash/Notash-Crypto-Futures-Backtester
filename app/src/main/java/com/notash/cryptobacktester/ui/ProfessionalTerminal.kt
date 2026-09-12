@@ -50,7 +50,7 @@ private var Divider = Color(0xFF263343)
 private var PrimaryText = Color.White
 private data class Quote(val symbol: String, val price: Double, val change: Double, val volume: Double)
 
-private enum class TerminalLayoutMode { COMPACT, STANDARD, EXPANDED }
+internal enum class TerminalLayoutMode { COMPACT, STANDARD, EXPANDED }
 
 internal fun terminalLayoutMode(widthDp: Int): TerminalLayoutMode = when {
     widthDp < 600 -> TerminalLayoutMode.COMPACT
