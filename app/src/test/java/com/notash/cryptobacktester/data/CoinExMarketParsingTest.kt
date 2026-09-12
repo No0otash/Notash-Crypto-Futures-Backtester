@@ -10,9 +10,9 @@ class CoinExMarketParsingTest {
     fun parsesTradingAndUnavailableFuturesMarkets() {
         val body = """
             {"code":0,"data":[
-              {"market":"BTCUSDT","base_ccy":"BTC","quote_ccy":"USDT","status":"online","is_market_available":true},
-              {"market":"PEPEUSDT","base_ccy":"PEPE","quote_ccy":"USDT","status":"online","is_market_available":true},
-              {"market":"OLDUSDT","base_ccy":"OLD","quote_ccy":"USDT","status":"counting_down","is_market_available":false}
+              {"market":"BTCUSDT","base_ccy":"BTC","quote_ccy":"USDT","status":"online"},
+              {"market":"PEPEUSDT","base_ccy":"PEPE","quote_ccy":"USDT","status":"online"},
+              {"market":"OLDUSDT","base_ccy":"OLD","quote_ccy":"USDT","status":"counting_down"}
             ],"message":"OK"}
         """.trimIndent()
 
