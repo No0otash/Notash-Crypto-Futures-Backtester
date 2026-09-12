@@ -7,12 +7,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
 
-data class FuturesMarketDescriptor(
-    val market: String,
-    val baseAsset: String,
-    val quoteAsset: String,
-    val isTrading: Boolean
-)
+data class FuturesMarketDescriptor(val market: String, val baseAsset: String, val quoteAsset: String, val isTrading: Boolean)
 
 data class FuturesTickerSnapshot(
     val market: String,
@@ -33,10 +28,7 @@ class CoinExApi(private val client: OkHttpClient = OkHttpClient()) {
         private const val BASE_URL = "https://api.coinex.com/v2"
 
         internal fun parseFuturesMarkets(body: String): List<FuturesMarketDescriptor> {
-            val json = JSONObject(body)
-            val code = json.opt("code")?.toString()?.toIntOrNull() ?: 0
-            if (code != 0) throw RuntimeException(json.optString("message", "CoinEx API error"))
-            val data = json.optJSONArray("data") ?: return emptyList()
+            val data = JSONObject(body).optJSONArray("data") ?: return emptyList()
             return buildList {
                 for (i in 0 until data.length()) {
                     val item = data.getJSONObject(i)
@@ -52,7 +44,10 @@ class CoinExApi(private val client: OkHttpClient = OkHttpClient()) {
         val request = Request.Builder().url("$BASE_URL/futures/market").get().build()
         client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) throw RuntimeException("CoinEx HTTP ${response.code}")
-            return parseFuturesMarkets(response.body?.string() ?: throw RuntimeException("Empty CoinEx response"))
+            val body = response.body?.string() ?: throw RuntimeException("Empty CoinEx response")
+            val json = JSONObject(body)
+            if (json.optInt("code") != 0) throw RuntimeException(json.optString("message", "CoinEx API error"))
+            return parseFuturesMarkets(body)
         }
     }
 
@@ -61,8 +56,7 @@ class CoinExApi(private val client: OkHttpClient = OkHttpClient()) {
         client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) throw RuntimeException("CoinEx HTTP ${response.code}")
             val json = JSONObject(response.body?.string() ?: throw RuntimeException("Empty CoinEx response"))
-            val code = json.opt("code")?.toString()?.toIntOrNull() ?: 0
-            if (code != 0) throw RuntimeException(json.optString("message", "CoinEx API error"))
+            if (json.optInt("code") != 0) throw RuntimeException(json.optString("message", "CoinEx API error"))
             val data = json.optJSONArray("data") ?: return emptyList()
             val now = System.currentTimeMillis()
             return buildList {
@@ -70,19 +64,7 @@ class CoinExApi(private val client: OkHttpClient = OkHttpClient()) {
                     val item = data.getJSONObject(i)
                     val market = item.optString("market")
                     if (market.isBlank()) continue
-                    add(FuturesTickerSnapshot(
-                        market = market,
-                        lastPrice = item.optString("last", "0").toDoubleOrNull() ?: 0.0,
-                        open24h = item.optString("open", "0").toDoubleOrNull() ?: 0.0,
-                        high24h = item.optString("high", "0").toDoubleOrNull() ?: 0.0,
-                        low24h = item.optString("low", "0").toDoubleOrNull() ?: 0.0,
-                        volume24h = item.optString("volume", "0").toDoubleOrNull() ?: 0.0,
-                        quoteVolume24h = item.optString("value", "0").toDoubleOrNull() ?: 0.0,
-                        buyVolume24h = item.optString("volume_buy", "").toDoubleOrNull(),
-                        sellVolume24h = item.optString("volume_sell", "").toDoubleOrNull(),
-                        openInterest = item.optString("open_interest_volume", "").toDoubleOrNull(),
-                        timestampMs = now
-                    ))
+                    add(FuturesTickerSnapshot(market, item.optString("last", "0").toDoubleOrNull() ?: 0.0, item.optString("open", "0").toDoubleOrNull() ?: 0.0, item.optString("high", "0").toDoubleOrNull() ?: 0.0, item.optString("low", "0").toDoubleOrNull() ?: 0.0, item.optString("volume", "0").toDoubleOrNull() ?: 0.0, item.optString("value", "0").toDoubleOrNull() ?: 0.0, item.optString("volume_buy", "").toDoubleOrNull(), item.optString("volume_sell", "").toDoubleOrNull(), item.optString("open_interest_volume", "").toDoubleOrNull(), now))
                 }
             }
         }
