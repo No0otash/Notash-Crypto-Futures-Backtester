@@ -14,7 +14,7 @@ import androidx.compose.runtime.Composable
 
 enum class TerminalPage(val titleFa: String, val titleEn: String) {
     MARKET("خانه", "Home"),
-    MARKETS("بازار", "Markets"),
+    MARKETS("بازارها", "Markets"),
     BACKTEST("بک‌تست", "Backtest"),
     REPORT("گزارش معاملات", "Trade Report"),
     STRATEGY("استراتژی", "Strategy"),
@@ -38,7 +38,7 @@ fun terminalNavigationPages(compact: Boolean): TerminalNavigationPages {
         TerminalPage.REPORT,
         TerminalPage.INTELLIGENCE
     )
-    val more = ordered.filterNot { it in visible }
+    val more = listOf(TerminalPage.AI, TerminalPage.STRATEGY)
     return TerminalNavigationPages(visible = visible, more = more)
 }
 
