@@ -22,6 +22,26 @@ enum class TerminalPage(val titleFa: String, val titleEn: String) {
     AI("AI Hub", "AI Hub")
 }
 
+data class TerminalNavigationPages(
+    val visible: List<TerminalPage>,
+    val more: List<TerminalPage>
+)
+
+fun terminalNavigationPages(compact: Boolean): TerminalNavigationPages {
+    val ordered = TerminalPage.values().toList()
+    if (!compact) return TerminalNavigationPages(visible = ordered, more = emptyList())
+
+    val visible = listOf(
+        TerminalPage.MARKET,
+        TerminalPage.MARKETS,
+        TerminalPage.BACKTEST,
+        TerminalPage.REPORT,
+        TerminalPage.INTELLIGENCE
+    )
+    val more = ordered.filterNot { it in visible }
+    return TerminalNavigationPages(visible = visible, more = more)
+}
+
 @Composable
 fun TerminalNavigation(selected: TerminalPage, onSelected: (TerminalPage) -> Unit, persian: Boolean = true) {
     NavigationBar {
