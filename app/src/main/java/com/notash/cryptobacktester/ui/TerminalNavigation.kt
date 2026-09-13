@@ -5,7 +5,6 @@ import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.List
-import androidx.compose.material.icons.outlined.Assessment
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -30,7 +29,7 @@ fun TerminalNavigation(selected: TerminalPage, onSelected: (TerminalPage) -> Uni
             TerminalPage.MARKET to Icons.Outlined.Home,
             TerminalPage.MARKETS to Icons.Outlined.List,
             TerminalPage.BACKTEST to Icons.Outlined.Build,
-            TerminalPage.REPORT to Icons.Outlined.Assessment,
+            TerminalPage.REPORT to Icons.Outlined.List,
             TerminalPage.INTELLIGENCE to Icons.Outlined.Info,
             TerminalPage.AI to Icons.Outlined.Star,
             TerminalPage.STRATEGY to Icons.Outlined.Build
