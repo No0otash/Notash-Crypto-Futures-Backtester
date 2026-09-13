@@ -97,7 +97,7 @@ fun ProfessionalTerminal(themeMode: AppThemeMode, onThemeMode: (AppThemeMode) ->
                     TerminalPage.BACKTEST -> BacktestScreen(fa, market, { market = it; vm.setMarket(it) }, timeframe, { timeframe = it }, vm, state)
                     TerminalPage.REPORT -> TradeByTradeReport(fa, state.report, Modifier.fillMaxSize())
                     TerminalPage.STRATEGY -> StrategyScreen(fa)
-                    TerminalPage.INTELLIGENCE -> IntelligenceScreen(fa, market)
+                    TerminalPage.INTELLIGENCE -> AlvexIntelligenceScreen(fa, market)
                     TerminalPage.AI -> AiScreen(fa, market, state.report)
                 }
                 }
