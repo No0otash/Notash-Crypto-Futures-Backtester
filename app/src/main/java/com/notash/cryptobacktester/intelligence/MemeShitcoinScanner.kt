@@ -3,10 +3,6 @@ package com.notash.cryptobacktester.intelligence
 import com.notash.cryptobacktester.core.Candle
 import kotlin.math.abs
 
-/**
- * Provider-neutral Meme/Shitcoin risk scanner. It never invents market/on-chain data;
- * callers provide the snapshot and candles they actually have.
- */
 data class MemeCoinSnapshot(
     val symbol: String,
     val market: String,
@@ -46,13 +42,14 @@ class MemeShitcoinScanner(private val baselinePeriods: Int = 20) {
         val avgVolume = recent.dropLast(1).map { it.volume }.average().takeIf { it > 0.0 } ?: 0.0
         val lastVolume = recent.lastOrNull()?.volume ?: 0.0
         val volumeRatio = if (avgVolume > 0.0) lastVolume / avgVolume else 0.0
-        val volatility = recent.map { candle ->
-            if (candle.close > 0.0) abs(candle.high - candle.low) / candle.close * 100.0 else 0.0
-        }.average().takeIf { it.isFinite() } ?: 0.0
+        val volatility = recent.map { candle -> if (candle.close > 0.0) abs(candle.high - candle.low) / candle.close * 100.0 else 0.0 }
+            .average().takeIf { it.isFinite() } ?: 0.0
         var risk = 0.0
         val flags = mutableListOf<String>()
-        if (snapshot.liquidityUsd < 100_000.0) { risk += 25.0; flags += "LOW_LIQUIDITY" }
+        if (snapshot.liquidityUsd > 0.0 && snapshot.liquidityUsd < 100_000.0) { risk += 25.0; flags += "LOW_LIQUIDITY" }
+        if (snapshot.liquidityUsd <= 0.0) flags += "LIQUIDITY_DATA_UNAVAILABLE"
         if (snapshot.marketCapUsd in 0.0..5_000_000.0 && snapshot.marketCapUsd > 0.0) { risk += 20.0; flags += "MICRO_CAP" }
+        if (snapshot.marketCapUsd <= 0.0) flags += "MARKET_CAP_DATA_UNAVAILABLE"
         if (snapshot.ageDays in 1..30) { risk += 15.0; flags += "NEW_TOKEN" }
         if (snapshot.holderConcentrationPercent != null && snapshot.holderConcentrationPercent >= 60.0) { risk += 20.0; flags += "HIGH_HOLDER_CONCENTRATION" }
         if (snapshot.contractVerified == false) { risk += 10.0; flags += "UNVERIFIED_CONTRACT" }

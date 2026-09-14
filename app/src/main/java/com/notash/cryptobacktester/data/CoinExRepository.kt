@@ -14,4 +14,8 @@ class CoinExRepository(private val api: CoinExApi = CoinExApi()) {
     suspend fun loadLatestTicker(market: String): MarketTicker? = withContext(Dispatchers.IO) { api.getTicker(market) }
 
     suspend fun loadFundingRate(market: String): FundingRate? = withContext(Dispatchers.IO) { api.getFundingRate(market) }
+
+    suspend fun loadFuturesMarkets(): List<FuturesMarketDescriptor> = withContext(Dispatchers.IO) { api.getFuturesMarkets() }
+
+    suspend fun loadFuturesTickers(): List<FuturesTickerSnapshot> = withContext(Dispatchers.IO) { api.getFuturesTickers() }
 }
