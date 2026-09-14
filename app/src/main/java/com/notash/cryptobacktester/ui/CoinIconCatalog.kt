@@ -3,9 +3,10 @@ package com.notash.cryptobacktester.ui
 /**
  * Provider-neutral catalog for real market asset icons.
  * Unknown assets intentionally return null instead of showing fabricated identity data.
+ * The icon set is a public CC0 cryptocurrency icon collection with 128px PNG assets.
  */
 internal object CoinIconCatalog {
-    private const val ICON_BASE = "https://assets.coinex.com/coins/"
+    private const val ICON_BASE = "https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/"
 
     private val known = setOf(
         "BTC", "ETH", "SOL", "XRP", "DOGE", "PEPE", "USDT", "USDC", "BNB", "ADA",
