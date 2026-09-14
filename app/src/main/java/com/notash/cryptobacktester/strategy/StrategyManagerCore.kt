@@ -15,7 +15,8 @@ data class ManagedStrategy(
     val tradeAmount: Double,
     val leverage: Double,
     val createdAt: Long,
-    val source: StrategySource
+    val source: StrategySource,
+    val robotJson: String? = null
 ) { val key: String get() = "$id@$version" }
 
 data class StrategyManagerState(val history: List<ManagedStrategy>, val activeIdVersion: String?)
