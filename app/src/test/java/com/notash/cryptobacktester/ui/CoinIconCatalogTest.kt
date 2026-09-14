@@ -19,7 +19,7 @@ class CoinIconCatalogTest {
     fun known_assets_have_real_provider_icon_urls() {
         val url = CoinIconCatalog.iconUrl("BTCUSDT")
         assertNotNull(url)
-        assertEquals("https://assets.coinex.com/coins/btc.png", url)
+        assertEquals("https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/btc.png", url)
         assertTrue(url.endsWith(".png"))
     }
 
